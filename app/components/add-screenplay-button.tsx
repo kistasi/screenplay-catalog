@@ -59,7 +59,7 @@ function AddModal({
       onMouseDown={onClose}
     >
       <div
-        className="w-full max-w-lg overflow-hidden rounded-xl bg-background shadow-2xl ring-1 ring-black/10"
+        className="w-full max-w-lg overflow-hidden rounded-xl bg-neutral-50 shadow-2xl ring-1 ring-foreground/15 dark:bg-neutral-800"
         onMouseDown={(e) => e.stopPropagation()}
       >
         {selected ? (
