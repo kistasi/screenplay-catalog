@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Screenplay, TmdbMovie } from '@/lib/types'
 import AddScreenplayButton from './add-screenplay-button'
 
@@ -9,6 +9,9 @@ export default function ScreenplayCatalog() {
   const [loading, setLoading] = useState(true)
   const [posterView, setPosterView] = useState<Screenplay | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [directorFilter, setDirectorFilter] = useState('')
+  const [writerFilter, setWriterFilter] = useState('')
+  const [titleQuery, setTitleQuery] = useState('')
 
   // Load the persisted catalog on mount.
   useEffect(() => {
@@ -52,12 +55,61 @@ export default function ScreenplayCatalog() {
     }
   }
 
+  // Distinct, sorted names to populate the filter dropdowns.
+  const directors = useMemo(() => uniqueNames(screenplays, 'directors'), [screenplays])
+  const writers = useMemo(() => uniqueNames(screenplays, 'writers'), [screenplays])
+
+  const titleNeedle = titleQuery.trim().toLowerCase()
+  const filtered = screenplays.filter(
+    (s) =>
+      (!titleNeedle || s.title.toLowerCase().includes(titleNeedle)) &&
+      (!directorFilter || s.directors.includes(directorFilter)) &&
+      (!writerFilter || s.writers.includes(writerFilter))
+  )
+
   return (
     <div className="mx-auto w-full max-w-4xl px-6 py-10">
       <header className="mb-8 flex items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold">Screenplay Catalog</h1>
         <AddScreenplayButton onAdd={addScreenplay} />
       </header>
+
+      {!loading && screenplays.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <input
+            type="search"
+            value={titleQuery}
+            onChange={(e) => setTitleQuery(e.target.value)}
+            placeholder="Search title…"
+            className="rounded-md border border-foreground/30 bg-background px-3 py-1.5 text-sm placeholder:opacity-50"
+          />
+          <FilterSelect
+            label="Director"
+            value={directorFilter}
+            options={directors}
+            onChange={setDirectorFilter}
+          />
+          <FilterSelect
+            label="Writer"
+            value={writerFilter}
+            options={writers}
+            onChange={setWriterFilter}
+          />
+          {(directorFilter || writerFilter || titleQuery) && (
+            <button
+              type="button"
+              onClick={() => {
+                setDirectorFilter('')
+                setWriterFilter('')
+                setTitleQuery('')
+              }}
+              className="cursor-pointer text-sm opacity-60 underline underline-offset-2 hover:opacity-100"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <p className="p-10 text-center text-sm opacity-60">Loading…</p>
@@ -82,7 +134,17 @@ export default function ScreenplayCatalog() {
               </tr>
             </thead>
             <tbody>
-              {screenplays.map((s) => (
+              {filtered.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={7}
+                    className="border border-foreground/20 px-4 py-6 text-center text-sm opacity-60"
+                  >
+                    No screenplays match the selected filters.
+                  </td>
+                </tr>
+              )}
+              {filtered.map((s) => (
                 <tr key={s.id} className="hover:bg-foreground/[0.04]">
                   <Td>
                     {s.posterUrl ? (
@@ -109,8 +171,12 @@ export default function ScreenplayCatalog() {
                     <span className="font-medium">{s.title}</span>
                   </Td>
                   <Td>{s.year ?? '—'}</Td>
-                  <Td>{s.directors.length ? s.directors.join(', ') : '—'}</Td>
-                  <Td>{s.writers.length ? s.writers.join(', ') : '—'}</Td>
+                  <Td>
+                    <NameList names={s.directors} onSelect={setDirectorFilter} />
+                  </Td>
+                  <Td>
+                    <NameList names={s.writers} onSelect={setWriterFilter} />
+                  </Td>
                   <Td>
                     {s.pdfName ? (
                       <a
@@ -184,6 +250,76 @@ function PosterModal({
         className="max-h-[85vh] w-auto rounded-lg shadow-2xl"
       />
     </div>
+  )
+}
+
+// Collect the distinct, alphabetically sorted names across a credit field.
+function uniqueNames(
+  screenplays: Screenplay[],
+  field: 'directors' | 'writers'
+): string[] {
+  const names = new Set<string>()
+  for (const s of screenplays) {
+    for (const name of s[field]) names.add(name)
+  }
+  return [...names].sort((a, b) => a.localeCompare(b))
+}
+
+// Render credit names as buttons that apply the matching filter on click.
+function NameList({
+  names,
+  onSelect,
+}: {
+  names: string[]
+  onSelect: (name: string) => void
+}) {
+  if (names.length === 0) return <>—</>
+  return (
+    <>
+      {names.map((name, i) => (
+        <span key={name}>
+          {i > 0 && ', '}
+          <button
+            type="button"
+            onClick={() => onSelect(name)}
+            className="cursor-pointer underline decoration-dotted underline-offset-2 hover:decoration-solid"
+            title={`Filter by ${name}`}
+          >
+            {name}
+          </button>
+        </span>
+      ))}
+    </>
+  )
+}
+
+function FilterSelect({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string
+  value: string
+  options: string[]
+  onChange: (value: string) => void
+}) {
+  return (
+    <label className="flex items-center gap-2 text-sm">
+      <span className="opacity-60">{label}:</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="cursor-pointer rounded-md border border-foreground/30 bg-background px-2 py-1.5 text-sm"
+      >
+        <option value="">All</option>
+        {options.map((name) => (
+          <option key={name} value={name}>
+            {name}
+          </option>
+        ))}
+      </select>
+    </label>
   )
 }
 
