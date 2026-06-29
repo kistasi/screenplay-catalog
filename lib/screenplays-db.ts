@@ -26,6 +26,13 @@ export async function getScreenplays(): Promise<Screenplay[]> {
   return readAll()
 }
 
+/** Look up a single screenplay by its TMDB id. */
+export async function findScreenplay(
+  id: number
+): Promise<Screenplay | undefined> {
+  return (await readAll()).find((s) => s.id === id)
+}
+
 /**
  * Persist a screenplay, ignoring duplicates (same TMDB id).
  * Returns the full, updated list.

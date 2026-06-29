@@ -120,5 +120,6 @@ export async function getScreenplay(id: number): Promise<Screenplay> {
     // The "Writing" department covers Screenplay, Writer, Story, Author, etc.
     writers: uniqueNames(crew, (c) => c.department === 'Writing'),
     posterUrl: posterUrl(data.poster_path),
+    pdfName: null,
   }
 }

@@ -26,13 +26,13 @@ export default function ScreenplayCatalog() {
     }
   }, [])
 
-  // Persist the selected film, then replace local state with the server's list.
-  const addScreenplay = async (movie: TmdbMovie) => {
-    const res = await fetch('/api/screenplays', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: movie.id }),
-    })
+  // Persist the selected film (with optional PDF), then replace local state.
+  const addScreenplay = async (movie: TmdbMovie, pdf: File | null) => {
+    const form = new FormData()
+    form.append('id', String(movie.id))
+    if (pdf) form.append('pdf', pdf)
+
+    const res = await fetch('/api/screenplays', { method: 'POST', body: form })
     const data = await res.json()
     if (!res.ok) throw new Error(data.error ?? 'Failed to add screenplay.')
     setScreenplays(data.screenplays)
@@ -61,6 +61,7 @@ export default function ScreenplayCatalog() {
                 <Th>Year</Th>
                 <Th>Director(s)</Th>
                 <Th>Writer(s)</Th>
+                <Th>Screenplay</Th>
               </tr>
             </thead>
             <tbody>
@@ -93,6 +94,21 @@ export default function ScreenplayCatalog() {
                   <Td>{s.year ?? '—'}</Td>
                   <Td>{s.directors.length ? s.directors.join(', ') : '—'}</Td>
                   <Td>{s.writers.length ? s.writers.join(', ') : '—'}</Td>
+                  <Td>
+                    {s.pdfName ? (
+                      <a
+                        href={`/api/screenplays/${s.id}/pdf`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 underline underline-offset-2 hover:opacity-80 dark:text-blue-400"
+                        title={s.pdfName}
+                      >
+                        View PDF
+                      </a>
+                    ) : (
+                      '—'
+                    )}
+                  </Td>
                 </tr>
               ))}
             </tbody>
