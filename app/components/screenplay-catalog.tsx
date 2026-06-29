@@ -3,12 +3,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Screenplay, TmdbMovie } from '@/lib/types'
 import AddScreenplayButton from './add-screenplay-button'
+import EditScreenplayModal from './edit-screenplay-modal'
 
 export default function ScreenplayCatalog() {
   const [screenplays, setScreenplays] = useState<Screenplay[]>([])
   const [loading, setLoading] = useState(true)
   const [posterView, setPosterView] = useState<Screenplay | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [editing, setEditing] = useState<Screenplay | null>(null)
   const [directorFilter, setDirectorFilter] = useState('')
   const [writerFilter, setWriterFilter] = useState('')
   const [titleQuery, setTitleQuery] = useState('')
@@ -40,6 +42,19 @@ export default function ScreenplayCatalog() {
     const data = await res.json()
     if (!res.ok) throw new Error(data.error ?? 'Failed to add screenplay.')
     setScreenplays(data.screenplays)
+  }
+
+  const updatePdf = async (id: number, pdf: File) => {
+    const form = new FormData()
+    form.append('pdf', pdf)
+    const res = await fetch(`/api/screenplays/${id}`, {
+      method: 'PATCH',
+      body: form,
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error ?? 'Failed to update PDF.')
+    setScreenplays(data.screenplays)
+    setEditing(null)
   }
 
   const deleteScreenplay = async (s: Screenplay) => {
@@ -193,14 +208,24 @@ export default function ScreenplayCatalog() {
                     )}
                   </Td>
                   <Td>
-                    <button
-                      type="button"
-                      onClick={() => deleteScreenplay(s)}
-                      disabled={deletingId === s.id}
-                      className="cursor-pointer rounded-md px-2 py-1 text-sm text-red-400 hover:bg-red-400/10 disabled:cursor-default disabled:opacity-50"
-                    >
-                      {deletingId === s.id ? 'Deleting…' : 'Delete'}
-                    </button>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setEditing(s)}
+                        disabled={deletingId === s.id}
+                        className="cursor-pointer rounded-md px-2 py-1 text-sm hover:bg-foreground/10 disabled:cursor-default disabled:opacity-50"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteScreenplay(s)}
+                        disabled={deletingId === s.id}
+                        className="cursor-pointer rounded-md px-2 py-1 text-sm text-red-400 hover:bg-red-400/10 disabled:cursor-default disabled:opacity-50"
+                      >
+                        {deletingId === s.id ? 'Deleting…' : 'Delete'}
+                      </button>
+                    </div>
                   </Td>
                 </tr>
               ))}
@@ -213,6 +238,14 @@ export default function ScreenplayCatalog() {
         <PosterModal
           screenplay={posterView}
           onClose={() => setPosterView(null)}
+        />
+      )}
+
+      {editing && (
+        <EditScreenplayModal
+          screenplay={editing}
+          onClose={() => setEditing(null)}
+          onSave={(pdf) => updatePdf(editing.id, pdf)}
         />
       )}
     </div>

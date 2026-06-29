@@ -47,6 +47,24 @@ export async function addScreenplay(screenplay: Screenplay): Promise<Screenplay[
   return updated
 }
 
+/**
+ * Apply partial changes to a screenplay by id. Returns the full, updated list,
+ * or null if no screenplay with that id exists.
+ */
+export async function updateScreenplay(
+  id: number,
+  changes: Partial<Screenplay>
+): Promise<Screenplay[] | null> {
+  const existing = await readAll()
+  const index = existing.findIndex((s) => s.id === id)
+  if (index === -1) return null
+
+  const updated = [...existing]
+  updated[index] = { ...updated[index], ...changes, id }
+  await writeAll(updated)
+  return updated
+}
+
 /** Remove a screenplay by id. Returns the full, updated list. */
 export async function removeScreenplay(id: number): Promise<Screenplay[]> {
   const existing = await readAll()
