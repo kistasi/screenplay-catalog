@@ -5,6 +5,7 @@ import type { Screenplay, TmdbMovie } from '@/lib/types'
 import AddScreenplayButton from './add-screenplay-button'
 import EditScreenplayModal from './edit-screenplay-modal'
 import { useEscapeKey } from './modal'
+import { Poster } from './poster'
 
 export default function ScreenplayCatalog() {
   const [screenplays, setScreenplays] = useState<Screenplay[]>([])
@@ -180,17 +181,15 @@ export default function ScreenplayCatalog() {
                         className="cursor-pointer rounded ring-offset-2 ring-offset-background transition-opacity hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground/40"
                         aria-label={`View poster for ${s.title}`}
                       >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={s.posterUrl}
-                          alt=""
-                          className="h-12 w-8 rounded object-cover bg-foreground/10"
-                        />
+                        <Poster src={s.posterUrl} alt="" className="h-12 w-8" />
                       </button>
                     ) : (
-                      <div className="flex h-12 w-8 items-center justify-center rounded bg-foreground/10 text-[10px] opacity-40">
-                        N/A
-                      </div>
+                      <Poster
+                        src={null}
+                        alt=""
+                        className="h-12 w-8"
+                        placeholderText="text-[10px]"
+                      />
                     )}
                   </Td>
                   <Td>
