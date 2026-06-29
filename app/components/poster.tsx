@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import Image from 'next/image'
 
 /**
  * A movie poster thumbnail, or an "N/A" placeholder when no image is available.
@@ -26,11 +27,8 @@ export function Poster({
     )
   }
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={src}
-      alt={alt}
-      className={`rounded object-cover bg-foreground/10 ${className}`}
-    />
+    <div className={`relative overflow-hidden rounded bg-foreground/10 ${className}`}>
+      <Image src={src} alt={alt} fill sizes="96px" className="object-cover" />
+    </div>
   )
 }

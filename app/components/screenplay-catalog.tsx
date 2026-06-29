@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import Image from 'next/image'
 import type { Screenplay, TmdbMovie } from '@/lib/types'
 import AddScreenplayButton from './add-screenplay-button'
 import EditScreenplayModal from './edit-screenplay-modal'
@@ -285,19 +286,23 @@ function PosterModal({
   useEscapeKey(onClose)
 
   // Stored posters are the w200 size; request a larger one for the modal.
-  const largeUrl = screenplay.posterUrl?.replace('/w200/', '/w500/')
+  const largeUrl = screenplay.posterUrl?.replace('/w200/', '/w780/')
+  if (!largeUrl) return null
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
       onMouseDown={onClose}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      {/* TMDB w780 posters are 780×1170 (2:3); the className scales it to fit. */}
+      <Image
         src={largeUrl}
         alt={`Poster for ${screenplay.title}`}
+        width={780}
+        height={1170}
+        sizes="(max-width: 768px) 90vw, 780px"
         onMouseDown={(e) => e.stopPropagation()}
-        className="max-h-[85vh] w-auto rounded-lg shadow-2xl"
+        className="h-auto w-auto max-h-[85vh] max-w-[90vw] rounded-lg shadow-2xl"
       />
     </div>
   )
