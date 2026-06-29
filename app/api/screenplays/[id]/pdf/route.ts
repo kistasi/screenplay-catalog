@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { findScreenplay } from '@/lib/screenplays-db'
 import { readPdf } from '@/lib/uploads'
+import { parseRouteId } from '@/lib/validation'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,10 +10,8 @@ export async function GET(
   ctx: RouteContext<'/api/screenplays/[id]/pdf'>
 ) {
   const { id } = await ctx.params
-  const numericId = Number(id)
-  if (!Number.isInteger(numericId)) {
-    return NextResponse.json({ error: 'Invalid id.' }, { status: 400 })
-  }
+  const numericId = parseRouteId(id)
+  if (numericId instanceof NextResponse) return numericId
 
   const pdf = await readPdf(numericId)
   if (!pdf) {

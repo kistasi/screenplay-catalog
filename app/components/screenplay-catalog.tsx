@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { Screenplay, TmdbMovie } from '@/lib/types'
 import AddScreenplayButton from './add-screenplay-button'
 import EditScreenplayModal from './edit-screenplay-modal'
+import { useEscapeKey } from './modal'
 
 export default function ScreenplayCatalog() {
   const [screenplays, setScreenplays] = useState<Screenplay[]>([])
@@ -259,13 +260,7 @@ function PosterModal({
   screenplay: Screenplay
   onClose: () => void
 }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  useEscapeKey(onClose)
 
   // Stored posters are the w200 size; request a larger one for the modal.
   const largeUrl = screenplay.posterUrl?.replace('/w200/', '/w500/')

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { TmdbMovie } from '@/lib/types'
+import { ModalShell } from './modal'
 
 export default function AddScreenplayButton({
   onAdd,
@@ -44,35 +45,18 @@ function AddModal({
   // The film picked in step one; null while still searching.
   const [selected, setSelected] = useState<TmdbMovie | null>(null)
 
-  // Close on Escape.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 pt-[10vh]"
-      onMouseDown={onClose}
-    >
-      <div
-        className="w-full max-w-lg overflow-hidden rounded-xl bg-neutral-800 shadow-2xl ring-1 ring-foreground/15"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        {selected ? (
-          <UploadStep
-            movie={selected}
-            onBack={() => setSelected(null)}
-            onConfirm={onConfirm}
-          />
-        ) : (
-          <SearchStep onSelect={setSelected} onClose={onClose} />
-        )}
-      </div>
-    </div>
+    <ModalShell onClose={onClose} className="overflow-hidden">
+      {selected ? (
+        <UploadStep
+          movie={selected}
+          onBack={() => setSelected(null)}
+          onConfirm={onConfirm}
+        />
+      ) : (
+        <SearchStep onSelect={setSelected} onClose={onClose} />
+      )}
+    </ModalShell>
   )
 }
 

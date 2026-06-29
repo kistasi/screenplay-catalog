@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { addScreenplay, getScreenplays } from '@/lib/screenplays-db'
 import { getScreenplay, TmdbError } from '@/lib/tmdb'
 import { savePdf } from '@/lib/uploads'
+import { pdfFromForm } from '@/lib/validation'
 
 // This route reads/writes the filesystem, so it must run per-request.
 export const dynamic = 'force-dynamic'
@@ -23,9 +24,8 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const pdf = form.get('pdf')
-  const hasPdf = pdf instanceof File && pdf.size > 0
-  if (hasPdf && pdf.type !== 'application/pdf') {
+  const pdf = pdfFromForm(form)
+  if (pdf === 'invalid') {
     return NextResponse.json(
       { error: 'Uploaded file must be a PDF.' },
       { status: 400 }
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     // Resolve full details (incl. director/writer credits) from TMDB.
     const screenplay = await getScreenplay(id)
 
-    if (hasPdf) {
+    if (pdf) {
       await savePdf(id, pdf)
       screenplay.pdfName = pdf.name
     }
