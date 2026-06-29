@@ -9,3 +9,7 @@ as a PDF and read it whenever you like.
 Once your catalog grows, find what you're looking for by searching titles or
 filtering by year, director, or writer — and click any name or year to filter by
 it instantly.
+
+## License
+
+Released under the [MIT License](LICENSE).
