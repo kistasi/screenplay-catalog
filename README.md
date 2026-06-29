@@ -10,6 +10,10 @@ Once your catalog grows, find what you're looking for by searching titles or
 filtering by year, director, or writer — and click any name or year to filter by
 it instantly.
 
+## A note on the code
+
+This project was written by [Claude Code](https://claude.com/claude-code), Anthropic's CLI coding agent.
+
 ## License
 
 Released under the [MIT License](LICENSE).
