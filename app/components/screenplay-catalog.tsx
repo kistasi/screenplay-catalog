@@ -14,6 +14,7 @@ export default function ScreenplayCatalog() {
   const [editing, setEditing] = useState<Screenplay | null>(null)
   const [directorFilter, setDirectorFilter] = useState('')
   const [writerFilter, setWriterFilter] = useState('')
+  const [yearFilter, setYearFilter] = useState('')
   const [titleQuery, setTitleQuery] = useState('')
 
   // Load the persisted catalog on mount.
@@ -71,16 +72,18 @@ export default function ScreenplayCatalog() {
     }
   }
 
-  // Distinct, sorted names to populate the filter dropdowns.
+  // Distinct, sorted values to populate the filter dropdowns.
   const directors = useMemo(() => uniqueNames(screenplays, 'directors'), [screenplays])
   const writers = useMemo(() => uniqueNames(screenplays, 'writers'), [screenplays])
+  const years = useMemo(() => uniqueYears(screenplays), [screenplays])
 
   const titleNeedle = titleQuery.trim().toLowerCase()
   const filtered = screenplays.filter(
     (s) =>
       (!titleNeedle || s.title.toLowerCase().includes(titleNeedle)) &&
       (!directorFilter || s.directors.includes(directorFilter)) &&
-      (!writerFilter || s.writers.includes(writerFilter))
+      (!writerFilter || s.writers.includes(writerFilter)) &&
+      (!yearFilter || s.year === yearFilter)
   )
 
   return (
@@ -100,6 +103,12 @@ export default function ScreenplayCatalog() {
             className="rounded-md border border-foreground/30 bg-background px-3 py-1.5 text-sm placeholder:opacity-50"
           />
           <FilterSelect
+            label="Year"
+            value={yearFilter}
+            options={years}
+            onChange={setYearFilter}
+          />
+          <FilterSelect
             label="Director"
             value={directorFilter}
             options={directors}
@@ -111,12 +120,13 @@ export default function ScreenplayCatalog() {
             options={writers}
             onChange={setWriterFilter}
           />
-          {(directorFilter || writerFilter || titleQuery) && (
+          {(directorFilter || writerFilter || yearFilter || titleQuery) && (
             <button
               type="button"
               onClick={() => {
                 setDirectorFilter('')
                 setWriterFilter('')
+                setYearFilter('')
                 setTitleQuery('')
               }}
               className="cursor-pointer text-sm opacity-60 underline underline-offset-2 hover:opacity-100"
@@ -186,7 +196,20 @@ export default function ScreenplayCatalog() {
                   <Td>
                     <span className="font-medium">{s.title}</span>
                   </Td>
-                  <Td>{s.year ?? '—'}</Td>
+                  <Td>
+                    {s.year ? (
+                      <button
+                        type="button"
+                        onClick={() => setYearFilter(s.year!)}
+                        className="cursor-pointer underline decoration-dotted underline-offset-2 hover:decoration-solid"
+                        title={`Filter by ${s.year}`}
+                      >
+                        {s.year}
+                      </button>
+                    ) : (
+                      '—'
+                    )}
+                  </Td>
                   <Td>
                     <NameList names={s.directors} onSelect={setDirectorFilter} />
                   </Td>
@@ -291,6 +314,15 @@ function uniqueNames(
     for (const name of s[field]) names.add(name)
   }
   return [...names].sort((a, b) => a.localeCompare(b))
+}
+
+// Collect the distinct years present, most recent first.
+function uniqueYears(screenplays: Screenplay[]): string[] {
+  const years = new Set<string>()
+  for (const s of screenplays) {
+    if (s.year) years.add(s.year)
+  }
+  return [...years].sort((a, b) => Number(b) - Number(a))
 }
 
 // Render credit names as buttons that apply the matching filter on click.
