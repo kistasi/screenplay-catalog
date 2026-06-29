@@ -7,6 +7,7 @@ import AddScreenplayButton from './add-screenplay-button'
 export default function ScreenplayCatalog() {
   const [screenplays, setScreenplays] = useState<Screenplay[]>([])
   const [loading, setLoading] = useState(true)
+  const [posterView, setPosterView] = useState<Screenplay | null>(null)
 
   // Load the persisted catalog on mount.
   useEffect(() => {
@@ -67,12 +68,19 @@ export default function ScreenplayCatalog() {
                 <tr key={s.id} className="hover:bg-foreground/[0.04]">
                   <Td>
                     {s.posterUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={s.posterUrl}
-                        alt=""
-                        className="h-12 w-8 rounded object-cover bg-foreground/10"
-                      />
+                      <button
+                        type="button"
+                        onClick={() => setPosterView(s)}
+                        className="cursor-pointer rounded ring-offset-2 ring-offset-background transition-opacity hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground/40"
+                        aria-label={`View poster for ${s.title}`}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={s.posterUrl}
+                          alt=""
+                          className="h-12 w-8 rounded object-cover bg-foreground/10"
+                        />
+                      </button>
                     ) : (
                       <div className="flex h-12 w-8 items-center justify-center rounded bg-foreground/10 text-[10px] opacity-40">
                         N/A
@@ -91,6 +99,47 @@ export default function ScreenplayCatalog() {
           </table>
         </div>
       )}
+
+      {posterView?.posterUrl && (
+        <PosterModal
+          screenplay={posterView}
+          onClose={() => setPosterView(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+function PosterModal({
+  screenplay,
+  onClose,
+}: {
+  screenplay: Screenplay
+  onClose: () => void
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  // Stored posters are the w200 size; request a larger one for the modal.
+  const largeUrl = screenplay.posterUrl?.replace('/w200/', '/w500/')
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
+      onMouseDown={onClose}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={largeUrl}
+        alt={`Poster for ${screenplay.title}`}
+        onMouseDown={(e) => e.stopPropagation()}
+        className="max-h-[85vh] w-auto rounded-lg shadow-2xl"
+      />
     </div>
   )
 }
