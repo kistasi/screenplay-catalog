@@ -1,5 +1,9 @@
+import ScreenplayCatalog from './components/screenplay-catalog'
+
 export default function Home() {
   return (
-    <div>screenplay catalog</div>
-  );
+    <main className="flex-1">
+      <ScreenplayCatalog />
+    </main>
+  )
 }
