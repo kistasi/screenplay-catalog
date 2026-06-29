@@ -114,7 +114,7 @@ export default function ScreenplayCatalog() {
       {loading ? (
         <p className="p-10 text-center text-sm opacity-60">Loading…</p>
       ) : screenplays.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-black/15 p-10 text-center text-sm opacity-60">
+        <p className="rounded-lg border border-dashed border-foreground/20 p-10 text-center text-sm opacity-60">
           No screenplays yet. Click “Add screenplay” to search for a film.
         </p>
       ) : (
@@ -183,7 +183,7 @@ export default function ScreenplayCatalog() {
                         href={`/api/screenplays/${s.id}/pdf`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-600 underline underline-offset-2 hover:opacity-80 dark:text-blue-400"
+                        className="text-blue-400 underline underline-offset-2 hover:opacity-80"
                         title={s.pdfName}
                       >
                         View PDF
@@ -197,7 +197,7 @@ export default function ScreenplayCatalog() {
                       type="button"
                       onClick={() => deleteScreenplay(s)}
                       disabled={deletingId === s.id}
-                      className="cursor-pointer rounded-md px-2 py-1 text-sm text-red-600 hover:bg-red-600/10 disabled:cursor-default disabled:opacity-50 dark:text-red-400"
+                      className="cursor-pointer rounded-md px-2 py-1 text-sm text-red-400 hover:bg-red-400/10 disabled:cursor-default disabled:opacity-50"
                     >
                       {deletingId === s.id ? 'Deleting…' : 'Delete'}
                     </button>

@@ -59,7 +59,7 @@ function AddModal({
       onMouseDown={onClose}
     >
       <div
-        className="w-full max-w-lg overflow-hidden rounded-xl bg-neutral-50 shadow-2xl ring-1 ring-foreground/15 dark:bg-neutral-800"
+        className="w-full max-w-lg overflow-hidden rounded-xl bg-neutral-800 shadow-2xl ring-1 ring-foreground/15"
         onMouseDown={(e) => e.stopPropagation()}
       >
         {selected ? (
@@ -131,7 +131,7 @@ function SearchStep({
 
   return (
     <>
-      <div className="flex items-center gap-3 border-b border-black/10 p-4">
+      <div className="flex items-center gap-3 border-b border-white/10 p-4">
         <input
           ref={inputRef}
           type="text"
@@ -163,7 +163,7 @@ function SearchStep({
               <button
                 type="button"
                 onClick={() => onSelect(movie)}
-                className="flex w-full cursor-pointer items-start gap-3 p-3 text-left transition-colors hover:bg-black/5"
+                className="flex w-full cursor-pointer items-start gap-3 p-3 text-left transition-colors hover:bg-white/5"
               >
                 <Poster movie={movie} />
                 <div className="min-w-0">
@@ -263,7 +263,7 @@ function UploadStep({
 function Poster({ movie }: { movie: TmdbMovie }) {
   if (!movie.posterUrl) {
     return (
-      <div className="flex h-[72px] w-12 shrink-0 items-center justify-center rounded bg-black/10 text-xs opacity-40">
+      <div className="flex h-[72px] w-12 shrink-0 items-center justify-center rounded bg-white/10 text-xs opacity-40">
         N/A
       </div>
     )
@@ -273,7 +273,7 @@ function Poster({ movie }: { movie: TmdbMovie }) {
     <img
       src={movie.posterUrl}
       alt=""
-      className="h-[72px] w-12 shrink-0 rounded object-cover bg-black/10"
+      className="h-[72px] w-12 shrink-0 rounded object-cover bg-white/10"
     />
   )
 }
