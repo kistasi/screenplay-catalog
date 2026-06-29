@@ -25,3 +25,12 @@ export async function readPdf(id: number): Promise<Buffer | null> {
     throw err
   }
 }
+
+/** Delete a stored PDF if present. */
+export async function deletePdf(id: number): Promise<void> {
+  try {
+    await fs.unlink(pdfPath(id))
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err
+  }
+}

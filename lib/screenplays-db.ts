@@ -46,3 +46,13 @@ export async function addScreenplay(screenplay: Screenplay): Promise<Screenplay[
   await writeAll(updated)
   return updated
 }
+
+/** Remove a screenplay by id. Returns the full, updated list. */
+export async function removeScreenplay(id: number): Promise<Screenplay[]> {
+  const existing = await readAll()
+  const updated = existing.filter((s) => s.id !== id)
+  if (updated.length !== existing.length) {
+    await writeAll(updated)
+  }
+  return updated
+}

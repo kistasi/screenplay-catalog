@@ -8,6 +8,7 @@ export default function ScreenplayCatalog() {
   const [screenplays, setScreenplays] = useState<Screenplay[]>([])
   const [loading, setLoading] = useState(true)
   const [posterView, setPosterView] = useState<Screenplay | null>(null)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
 
   // Load the persisted catalog on mount.
   useEffect(() => {
@@ -38,6 +39,19 @@ export default function ScreenplayCatalog() {
     setScreenplays(data.screenplays)
   }
 
+  const deleteScreenplay = async (s: Screenplay) => {
+    if (!confirm(`Remove “${s.title}” from the catalog?`)) return
+    setDeletingId(s.id)
+    try {
+      const res = await fetch(`/api/screenplays/${s.id}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to delete.')
+      setScreenplays(data.screenplays)
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   return (
     <div className="mx-auto w-full max-w-4xl px-6 py-10">
       <header className="mb-8 flex items-center justify-between gap-4">
@@ -62,6 +76,9 @@ export default function ScreenplayCatalog() {
                 <Th>Director(s)</Th>
                 <Th>Writer(s)</Th>
                 <Th>Screenplay</Th>
+                <Th>
+                  <span className="sr-only">Actions</span>
+                </Th>
               </tr>
             </thead>
             <tbody>
@@ -108,6 +125,16 @@ export default function ScreenplayCatalog() {
                     ) : (
                       '—'
                     )}
+                  </Td>
+                  <Td>
+                    <button
+                      type="button"
+                      onClick={() => deleteScreenplay(s)}
+                      disabled={deletingId === s.id}
+                      className="cursor-pointer rounded-md px-2 py-1 text-sm text-red-600 hover:bg-red-600/10 disabled:cursor-default disabled:opacity-50 dark:text-red-400"
+                    >
+                      {deletingId === s.id ? 'Deleting…' : 'Delete'}
+                    </button>
                   </Td>
                 </tr>
               ))}
