@@ -13,14 +13,12 @@ export async function GET(
   const numericId = parseRouteId(id)
   if (numericId instanceof NextResponse) return numericId
 
-  const pdf = await readPdf(numericId)
-  if (!pdf) {
+  const screenplay = await findScreenplay(numericId)
+  const filename = screenplay?.pdfName ?? null
+  const pdf = await readPdf(filename)
+  if (!pdf || !filename) {
     return NextResponse.json({ error: 'No PDF found.' }, { status: 404 })
   }
-
-  // Serve under the original uploaded filename when we have it.
-  const screenplay = await findScreenplay(numericId)
-  const filename = screenplay?.pdfName ?? `${numericId}.pdf`
 
   // Provide an ASCII fallback plus an RFC 5987 encoded name so filenames with
   // spaces or non-ASCII characters survive.

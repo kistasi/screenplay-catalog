@@ -4,7 +4,7 @@ import {
   removeScreenplay,
   updateScreenplay,
 } from '@/lib/screenplays-db'
-import { deletePdf, savePdf } from '@/lib/uploads'
+import { deletePdf, savePdf, slugify } from '@/lib/uploads'
 import { parseRouteId, pdfFromForm } from '@/lib/validation'
 
 export const dynamic = 'force-dynamic'
@@ -17,8 +17,9 @@ export async function DELETE(
   const numericId = parseRouteId(id)
   if (numericId instanceof NextResponse) return numericId
 
+  const screenplay = await findScreenplay(numericId)
   const screenplays = await removeScreenplay(numericId)
-  await deletePdf(numericId)
+  await deletePdf(screenplay?.pdfName ?? null)
 
   return NextResponse.json({ screenplays })
 }
@@ -41,12 +42,15 @@ export async function PATCH(
     return NextResponse.json({ error: 'Uploaded file must be a PDF.' }, { status: 400 })
   }
 
-  if (!(await findScreenplay(numericId))) {
+  const existing = await findScreenplay(numericId)
+  if (!existing) {
     return NextResponse.json({ error: 'Screenplay not found.' }, { status: 404 })
   }
 
-  await savePdf(numericId, pdf)
-  const screenplays = await updateScreenplay(numericId, { pdfName: pdf.name })
+  await deletePdf(existing.pdfName)
+  const filename = `${slugify(existing.title, existing.year)}.pdf`
+  await savePdf(filename, pdf)
+  const screenplays = await updateScreenplay(numericId, { pdfName: filename })
 
   return NextResponse.json({ screenplays })
 }

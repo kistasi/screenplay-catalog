@@ -1,16 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { addScreenplay, getScreenplays } from '@/lib/screenplays-db'
 import { getScreenplay, TmdbError } from '@/lib/tmdb'
-import { savePdf } from '@/lib/uploads'
+import { savePdf, slugify } from '@/lib/uploads'
 import { pdfFromForm } from '@/lib/validation'
-
-function slugify(title: string, year: string | null): string {
-  const slug = title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-  return year ? `${slug}-${year}` : slug
-}
 
 // This route reads/writes the filesystem, so it must run per-request.
 export const dynamic = 'force-dynamic'
@@ -45,8 +37,9 @@ export async function POST(request: NextRequest) {
     const screenplay = await getScreenplay(id)
 
     if (pdf) {
-      await savePdf(id, pdf)
-      screenplay.pdfName = `${slugify(screenplay.title, screenplay.year)}.pdf`
+      const filename = `${slugify(screenplay.title, screenplay.year)}.pdf`
+      await savePdf(filename, pdf)
+      screenplay.pdfName = filename
     }
 
     const screenplays = await addScreenplay(screenplay)
