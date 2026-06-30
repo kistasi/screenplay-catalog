@@ -107,7 +107,7 @@ function SearchStep({
       } finally {
         setLoading(false)
       }
-    }, 300)
+    }, 1000)
 
     return () => {
       clearTimeout(timer)
