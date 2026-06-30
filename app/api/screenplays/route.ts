@@ -4,6 +4,14 @@ import { getScreenplay, TmdbError } from '@/lib/tmdb'
 import { savePdf } from '@/lib/uploads'
 import { pdfFromForm } from '@/lib/validation'
 
+function slugify(title: string, year: string | null): string {
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return year ? `${slug}-${year}` : slug
+}
+
 // This route reads/writes the filesystem, so it must run per-request.
 export const dynamic = 'force-dynamic'
 
@@ -38,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     if (pdf) {
       await savePdf(id, pdf)
-      screenplay.pdfName = pdf.name
+      screenplay.pdfName = `${slugify(screenplay.title, screenplay.year)}.pdf`
     }
 
     const screenplays = await addScreenplay(screenplay)
