@@ -1,20 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
-const FILE_INPUT_CLASS =
-  'block w-full cursor-pointer text-sm file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-foreground file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-background hover:file:opacity-90'
-
-/**
- * Shared PDF picker: a file input plus an error message and a Cancel/submit
- * button row. Owns the selection, submitting, and error state, so callers only
- * provide labels and an `onSubmit` that persists the file.
- *
- * `requirePdf` disables the submit button until a file is chosen; when false the
- * PDF is optional and `onSubmit` may receive `null`. On success the form is
- * expected to unmount (the caller closes the modal), so it stays in its
- * submitting state rather than resetting.
- */
 export function PdfUploadForm({
   label,
   cancelLabel,
@@ -35,6 +22,9 @@ export function PdfUploadForm({
   const [pdf, setPdf] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [dragging, setDragging] = useState(false)
+  const dragCounter = useRef(0)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const submit = async () => {
     if (requirePdf && !pdf) return
@@ -48,17 +38,73 @@ export function PdfUploadForm({
     }
   }
 
+  const acceptFile = (file: File) => {
+    if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+      setError(null)
+      setPdf(file)
+    } else {
+      setError('Please select a PDF file.')
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    dragCounter.current = 0
+    setDragging(false)
+    const file = e.dataTransfer.files[0]
+    if (file) acceptFile(file)
+  }
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+    dragCounter.current++
+    setDragging(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    if (--dragCounter.current === 0) setDragging(false)
+  }
+
   return (
     <>
-      <label className="mt-4 block">
-        {label && <span className="text-sm opacity-60">{label}</span>}
-        <input
-          type="file"
-          accept="application/pdf,.pdf"
-          onChange={(e) => setPdf(e.target.files?.[0] ?? null)}
-          className={label ? `mt-1 ${FILE_INPUT_CLASS}` : FILE_INPUT_CLASS}
-        />
-      </label>
+      <div className="mt-4">
+        {label && (
+          <span className="mb-1 block text-sm opacity-60">{label}</span>
+        )}
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="PDF drop zone"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click()
+          }}
+          onClick={() => inputRef.current?.click()}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={handleDrop}
+          className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-4 py-6 text-center transition-colors ${
+            dragging
+              ? 'border-foreground bg-white/5'
+              : 'border-white/20 hover:border-white/40'
+          }`}
+        >
+          <p className="text-sm opacity-60">
+            {pdf ? pdf.name : 'Drop a PDF here, or click to browse'}
+          </p>
+          <input
+            ref={inputRef}
+            type="file"
+            accept="application/pdf,.pdf"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) acceptFile(file)
+            }}
+            className="sr-only"
+          />
+        </div>
+      </div>
 
       {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
 
