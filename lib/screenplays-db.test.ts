@@ -79,49 +79,6 @@ describe('getScreenplays', () => {
     expect(all[0].id).toBe(7)
   })
 
-  it('defaults mediaType to movie for records saved before TV support', async () => {
-    await fs.mkdir(path.join(tmpDir, 'data'), { recursive: true })
-    const legacyRecord = { ...makeScreenplay({ id: 42 }) } as Partial<Screenplay>
-    delete legacyRecord.mediaType
-    await fs.writeFile(
-      path.join(tmpDir, 'data', 'screenplays.json'),
-      JSON.stringify([legacyRecord])
-    )
-
-    const all = await db.getScreenplays()
-    expect(all[0].mediaType).toBe('movie')
-  })
-
-  it('defaults episodes to an empty array for tv records saved before per-episode PDFs', async () => {
-    await fs.mkdir(path.join(tmpDir, 'data'), { recursive: true })
-    const legacyRecord = { ...makeTvScreenplay({ id: 1399 }) } as Partial<TvScreenplay>
-    delete legacyRecord.episodes
-    await fs.writeFile(
-      path.join(tmpDir, 'data', 'screenplays.json'),
-      JSON.stringify([legacyRecord])
-    )
-
-    const all = await db.getScreenplays()
-    expect(all[0]).toMatchObject({ mediaType: 'tv', episodes: [] })
-  })
-
-  it('defaults an episode directors/writers to empty arrays for episodes saved before per-episode credits', async () => {
-    await fs.mkdir(path.join(tmpDir, 'data'), { recursive: true })
-    const legacyEpisode = { ...makeEpisode() } as Partial<Episode>
-    delete legacyEpisode.directors
-    delete legacyEpisode.writers
-    const legacyRecord = makeTvScreenplay({ episodes: [legacyEpisode as Episode] })
-    await fs.writeFile(
-      path.join(tmpDir, 'data', 'screenplays.json'),
-      JSON.stringify([legacyRecord])
-    )
-
-    const all = await db.getScreenplays()
-    const show = all[0] as TvScreenplay
-    expect(show.episodes[0].directors).toEqual([])
-    expect(show.episodes[0].writers).toEqual([])
-  })
-
   it('propagates non-ENOENT read errors', async () => {
     // A directory where the JSON file is expected makes readFile fail with EISDIR.
     await fs.mkdir(path.join(tmpDir, 'data', 'screenplays.json'), {

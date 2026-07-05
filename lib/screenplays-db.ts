@@ -8,27 +8,7 @@ const DB_PATH = path.join(process.cwd(), 'data', 'screenplays.json')
 async function readAll(): Promise<Screenplay[]> {
   try {
     const raw = await fs.readFile(DB_PATH, 'utf8')
-    const parsed = JSON.parse(raw) as Array<Partial<Screenplay> & { id: number }>
-    // Records saved before TV show support don't carry a mediaType, and
-    // records saved before per-episode PDFs don't carry an episodes list;
-    // normalize both so every record matches the current shape.
-    return parsed.map((s) => {
-      const mediaType = s.mediaType ?? 'movie'
-      if (mediaType === 'tv') {
-        const episodes = (s as Partial<TvScreenplay>).episodes ?? []
-        // Episodes saved before per-episode credits don't carry directors/writers.
-        return {
-          ...s,
-          mediaType,
-          episodes: episodes.map((e) => ({
-            ...e,
-            directors: e.directors ?? [],
-            writers: e.writers ?? [],
-          })),
-        } as TvScreenplay
-      }
-      return { ...s, mediaType, pdfName: (s as Partial<MovieScreenplay>).pdfName ?? null } as MovieScreenplay
-    })
+    return JSON.parse(raw) as Screenplay[]
   } catch (err) {
     // A missing file just means an empty database.
     if ((err as NodeJS.ErrnoException).code === 'ENOENT') return []
