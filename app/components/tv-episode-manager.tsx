@@ -3,6 +3,18 @@
 import { useEffect, useState } from 'react'
 import type { Episode, TvEpisodeInfo, TvScreenplay, TvSeason } from '@/lib/types'
 import { screenplayKey } from '@/lib/types'
+import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
+import Link from '@mui/material/Link'
+import List from '@mui/material/List'
+import ListItemButton from '@mui/material/ListItemButton'
+import ListItemText from '@mui/material/ListItemText'
+import Stack from '@mui/material/Stack'
+import Typography from '@mui/material/Typography'
+import AddIcon from '@mui/icons-material/Add'
+import DeleteIcon from '@mui/icons-material/Delete'
+import EditIcon from '@mui/icons-material/Edit'
+import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import { PdfUploadForm } from './pdf-upload-form'
 
 type Step =
@@ -103,10 +115,10 @@ export function TvEpisodeManager({
       (e) => e.seasonNumber === step.seasonNumber && e.episodeNumber === step.episodeNumber
     )
     return (
-      <div className="mt-3">
-        <p className="text-sm opacity-60">
+      <Box sx={{ mt: 1.5 }}>
+        <Typography variant="body2" sx={{ opacity: 0.6 }}>
           S{step.seasonNumber}E{step.episodeNumber} — {step.name}
-        </p>
+        </Typography>
         <PdfUploadForm
           label={existing ? 'Replace PDF' : 'Add PDF'}
           cancelLabel="Back"
@@ -126,53 +138,76 @@ export function TvEpisodeManager({
             setStep({ kind: 'list' })
           }}
         />
-      </div>
+      </Box>
     )
   }
 
   return (
-    <div className="mt-3">
+    <Box sx={{ mt: 1.5 }}>
       {episodes.length === 0 ? (
-        <p className="text-sm opacity-60">
+        <Typography variant="body2" sx={{ opacity: 0.6 }}>
           {allEpisodes.length === 0
             ? 'No episode PDFs attached yet.'
             : 'No episodes match the selected filters.'}
-        </p>
+        </Typography>
       ) : (
-        <ul className="max-h-[45vh] divide-y divide-white/10 overflow-y-auto rounded-md border border-white/10">
+        <List
+          disablePadding
+          sx={{
+            maxHeight: '45vh',
+            overflowY: 'auto',
+            borderRadius: 1,
+            border: 1,
+            borderColor: 'divider',
+            '& > li + li': { borderTop: 1, borderColor: 'divider' },
+          }}
+        >
           {episodes.map((e) => {
             const key = `${e.seasonNumber}-${e.episodeNumber}`
             return (
-              <li
+              <Stack
                 key={key}
-                className="flex items-start justify-between gap-2 px-3 py-2 text-sm"
+                component="li"
+                direction="row"
+                spacing={1}
+                sx={{
+                  px: 1.5,
+                  py: 1,
+                  fontSize: 14,
+                  listStyle: 'none',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                }}
               >
-                <div className="min-w-0">
-                  <p className="truncate">
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography variant="body2" noWrap>
                     S{e.seasonNumber}E{e.episodeNumber} — {e.name}
-                  </p>
+                  </Typography>
                   {e.directors.length > 0 && (
-                    <p className="mt-0.5 truncate text-sm opacity-60">
+                    <Typography variant="body2" noWrap sx={{ mt: 0.25, opacity: 0.6 }}>
                       Director(s): <CreditNames names={e.directors} onSelect={onFilterDirector} />
-                    </p>
+                    </Typography>
                   )}
                   {e.writers.length > 0 && (
-                    <p className="mt-0.5 text-sm opacity-60">
+                    <Typography variant="body2" sx={{ mt: 0.25, opacity: 0.6 }}>
                       Writer(s): <CreditNames names={e.writers} onSelect={onFilterWriter} />
-                    </p>
+                    </Typography>
                   )}
-                </div>
-                <div className="flex shrink-0 gap-1">
-                  <a
+                </Box>
+                <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
+                  <Button
+                    component="a"
                     href={`/api/screenplays/${screenplayKey(screenplay)}/episodes/${e.seasonNumber}/${e.episodeNumber}/pdf`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-md px-2 py-1 text-blue-400 underline underline-offset-2 hover:opacity-80"
+                    size="small"
+                    startIcon={<OpenInNewIcon fontSize="small" />}
                   >
                     View
-                  </a>
-                  <button
-                    type="button"
+                  </Button>
+                  <Button
+                    size="small"
+                    startIcon={<EditIcon fontSize="small" />}
                     onClick={() =>
                       setStep({
                         kind: 'upload',
@@ -183,33 +218,35 @@ export function TvEpisodeManager({
                         writers: e.writers,
                       })
                     }
-                    className="cursor-pointer rounded-md px-2 py-1 hover:bg-foreground/10"
                   >
                     Replace
-                  </button>
-                  <button
-                    type="button"
+                  </Button>
+                  <Button
+                    size="small"
+                    color="error"
+                    startIcon={<DeleteIcon fontSize="small" />}
                     onClick={() => remove(e)}
                     disabled={removingKey === key}
-                    className="cursor-pointer rounded-md px-2 py-1 text-red-400 hover:bg-red-400/10 disabled:cursor-default disabled:opacity-50"
                   >
                     {removingKey === key ? 'Removing…' : 'Remove'}
-                  </button>
-                </div>
-              </li>
+                  </Button>
+                </Stack>
+              </Stack>
             )
           })}
-        </ul>
+        </List>
       )}
 
-      <button
-        type="button"
+      <Button
+        variant="outlined"
+        size="small"
+        startIcon={<AddIcon fontSize="small" />}
         onClick={() => setStep({ kind: 'pick-season' })}
-        className="mt-3 cursor-pointer rounded-md border border-white/20 px-3 py-1.5 text-sm hover:bg-white/5"
+        sx={{ mt: 1.5 }}
       >
-        + Add episode PDF
-      </button>
-    </div>
+        Add episode PDF
+      </Button>
+    </Box>
   )
 }
 
@@ -256,35 +293,49 @@ function SeasonPicker({
   )
 
   return (
-    <div className="mt-3">
-      <p className="text-sm opacity-60">Pick a season.</p>
-      {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
-      {!error && !seasons && <p className="mt-2 text-sm opacity-60">Loading…</p>}
-      {seasons && (
-        <ul className="mt-2 max-h-[45vh] divide-y divide-white/10 overflow-y-auto rounded-md border border-white/10">
-          {seasons.map((s) => (
-            <li key={s.seasonNumber}>
-              <button
-                type="button"
-                onClick={() => onSelect(s)}
-                className="w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-white/5"
-              >
-                {s.name} ({s.episodeCount} episodes)
-              </button>
-            </li>
-          ))}
-        </ul>
+    <Box sx={{ mt: 1.5 }}>
+      <Typography variant="body2" sx={{ opacity: 0.6 }}>
+        Pick a season.
+      </Typography>
+      {error && (
+        <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+          {error}
+        </Typography>
       )}
-      <div className="mt-3 flex justify-end">
-        <button
-          type="button"
-          onClick={onBack}
-          className="cursor-pointer rounded-md px-4 py-2 text-sm opacity-70 hover:opacity-100"
+      {!error && !seasons && (
+        <Typography variant="body2" sx={{ mt: 1, opacity: 0.6 }}>
+          Loading…
+        </Typography>
+      )}
+      {seasons && (
+        <List
+          disablePadding
+          sx={{
+            mt: 1,
+            maxHeight: '45vh',
+            overflowY: 'auto',
+            borderRadius: 1,
+            border: 1,
+            borderColor: 'divider',
+            '& > .MuiListItemButton-root + .MuiListItemButton-root': {
+              borderTop: 1,
+              borderColor: 'divider',
+            },
+          }}
         >
+          {seasons.map((s) => (
+            <ListItemButton key={s.seasonNumber} onClick={() => onSelect(s)}>
+              <ListItemText primary={`${s.name} (${s.episodeCount} episodes)`} />
+            </ListItemButton>
+          ))}
+        </List>
+      )}
+      <Stack direction="row" sx={{ mt: 1.5, justifyContent: 'flex-end' }}>
+        <Button variant="text" onClick={onBack}>
           Back
-        </button>
-      </div>
-    </div>
+        </Button>
+      </Stack>
+    </Box>
   )
 }
 
@@ -306,35 +357,49 @@ function EpisodePicker({
   )
 
   return (
-    <div className="mt-3">
-      <p className="text-sm opacity-60">Pick an episode from {season.name}.</p>
-      {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
-      {!error && !episodes && <p className="mt-2 text-sm opacity-60">Loading…</p>}
-      {episodes && (
-        <ul className="mt-2 max-h-[45vh] divide-y divide-white/10 overflow-y-auto rounded-md border border-white/10">
-          {episodes.map((e) => (
-            <li key={e.episodeNumber}>
-              <button
-                type="button"
-                onClick={() => onSelect(e)}
-                className="w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-white/5"
-              >
-                E{e.episodeNumber} — {e.name}
-              </button>
-            </li>
-          ))}
-        </ul>
+    <Box sx={{ mt: 1.5 }}>
+      <Typography variant="body2" sx={{ opacity: 0.6 }}>
+        Pick an episode from {season.name}.
+      </Typography>
+      {error && (
+        <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+          {error}
+        </Typography>
       )}
-      <div className="mt-3 flex justify-end">
-        <button
-          type="button"
-          onClick={onBack}
-          className="cursor-pointer rounded-md px-4 py-2 text-sm opacity-70 hover:opacity-100"
+      {!error && !episodes && (
+        <Typography variant="body2" sx={{ mt: 1, opacity: 0.6 }}>
+          Loading…
+        </Typography>
+      )}
+      {episodes && (
+        <List
+          disablePadding
+          sx={{
+            mt: 1,
+            maxHeight: '45vh',
+            overflowY: 'auto',
+            borderRadius: 1,
+            border: 1,
+            borderColor: 'divider',
+            '& > .MuiListItemButton-root + .MuiListItemButton-root': {
+              borderTop: 1,
+              borderColor: 'divider',
+            },
+          }}
         >
+          {episodes.map((e) => (
+            <ListItemButton key={e.episodeNumber} onClick={() => onSelect(e)}>
+              <ListItemText primary={`E${e.episodeNumber} — ${e.name}`} />
+            </ListItemButton>
+          ))}
+        </List>
+      )}
+      <Stack direction="row" sx={{ mt: 1.5, justifyContent: 'flex-end' }}>
+        <Button variant="text" onClick={onBack}>
           Back
-        </button>
-      </div>
-    </div>
+        </Button>
+      </Stack>
+    </Box>
   )
 }
 
@@ -351,13 +416,9 @@ function CreditNames({
       {names.map((name, i) => (
         <span key={name}>
           {i > 0 && ', '}
-          <button
-            type="button"
-            onClick={() => onSelect(name)}
-            className="cursor-pointer underline decoration-dotted underline-offset-2 hover:decoration-solid"
-          >
+          <Link component="button" type="button" underline="hover" onClick={() => onSelect(name)}>
             {name}
-          </button>
+          </Link>
         </span>
       ))}
     </>

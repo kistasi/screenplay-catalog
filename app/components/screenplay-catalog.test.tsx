@@ -96,7 +96,7 @@ describe('ScreenplayCatalog', () => {
     await screen.findByText('The Matrix')
     expect(screen.queryByText('Game of Thrones')).not.toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: /Shows/ }))
+    await userEvent.click(screen.getByRole('tab', { name: /Shows/ }))
     expect(screen.getByText('Game of Thrones')).toBeInTheDocument()
     expect(screen.queryByText('The Matrix')).not.toBeInTheDocument()
   })
@@ -104,7 +104,7 @@ describe('ScreenplayCatalog', () => {
   it('lists individual episode PDFs inline on the Shows tab', async () => {
     loadWith([thrones])
     render(<ScreenplayCatalog />)
-    await userEvent.click(screen.getByRole('button', { name: /Shows/ }))
+    await userEvent.click(screen.getByRole('tab', { name: /Shows/ }))
     expect(await screen.findByText(/Winter Is Coming/)).toBeInTheDocument()
   })
 
@@ -209,10 +209,10 @@ describe('ScreenplayCatalog', () => {
   it('shows the episode manager (no separate edit step) for a TV show', async () => {
     loadWith([thrones])
     render(<ScreenplayCatalog />)
-    await userEvent.click(screen.getByRole('button', { name: /Shows/ }))
+    await userEvent.click(screen.getByRole('tab', { name: /Shows/ }))
     expect(await screen.findByText(/Winter Is Coming/)).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: '+ Add episode PDF' })
+      screen.getByRole('button', { name: 'Add episode PDF' })
     ).toBeInTheDocument()
   })
 

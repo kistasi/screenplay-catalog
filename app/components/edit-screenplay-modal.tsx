@@ -1,7 +1,10 @@
 'use client'
 
 import type { MovieScreenplay } from '@/lib/types'
-import { ModalShell } from './modal'
+import Dialog from '@mui/material/Dialog'
+import DialogContent from '@mui/material/DialogContent'
+import DialogTitle from '@mui/material/DialogTitle'
+import Typography from '@mui/material/Typography'
 import { PdfUploadForm } from './pdf-upload-form'
 
 export default function EditScreenplayModal({
@@ -15,28 +18,33 @@ export default function EditScreenplayModal({
   onSave: (pdf: File) => Promise<void>
 }) {
   return (
-    <ModalShell onClose={onClose} className="p-4">
-      <h2 className="font-medium">
+    <Dialog open onClose={onClose} fullWidth maxWidth="xs">
+      <DialogTitle>
         {screenplay.title}
         {screenplay.year && (
-          <span className="opacity-50"> ({screenplay.year})</span>
+          <Typography component="span" sx={{ opacity: 0.5 }}>
+            {' '}
+            ({screenplay.year})
+          </Typography>
         )}
-      </h2>
-      <p className="mt-0.5 text-sm opacity-60">
-        {screenplay.pdfName
-          ? `Current PDF: ${screenplay.pdfName}`
-          : 'No PDF attached yet.'}
-      </p>
+      </DialogTitle>
+      <DialogContent sx={{ pt: '0 !important' }}>
+        <Typography variant="body2" sx={{ opacity: 0.6 }}>
+          {screenplay.pdfName
+            ? `Current PDF: ${screenplay.pdfName}`
+            : 'No PDF attached yet.'}
+        </Typography>
 
-      <PdfUploadForm
-        label={screenplay.pdfName ? 'Replace PDF' : 'Add PDF'}
-        cancelLabel="Cancel"
-        submitLabel="Save"
-        submittingLabel="Saving…"
-        requirePdf
-        onCancel={onClose}
-        onSubmit={(pdf) => onSave(pdf!)}
-      />
-    </ModalShell>
+        <PdfUploadForm
+          label={screenplay.pdfName ? 'Replace PDF' : 'Add PDF'}
+          cancelLabel="Cancel"
+          submitLabel="Save"
+          submittingLabel="Saving…"
+          requirePdf
+          onCancel={onClose}
+          onSubmit={(pdf) => onSave(pdf!)}
+        />
+      </DialogContent>
+    </Dialog>
   )
 }

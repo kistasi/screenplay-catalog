@@ -1,6 +1,10 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
+import Stack from '@mui/material/Stack'
+import Typography from '@mui/material/Typography'
 
 export function PdfUploadForm({
   label,
@@ -68,14 +72,17 @@ export function PdfUploadForm({
 
   return (
     <>
-      <div className="mt-4">
+      <Box sx={{ mt: 2 }}>
         {label && (
-          <span className="mb-1 block text-sm opacity-60">{label}</span>
+          <Typography variant="body2" sx={{ mb: 0.5, opacity: 0.6 }}>
+            {label}
+          </Typography>
         )}
-        <div
+        <Box
           role="button"
           tabIndex={0}
           aria-label="PDF drop zone"
+          data-dragging={dragging || undefined}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click()
           }}
@@ -84,15 +91,27 @@ export function PdfUploadForm({
           onDragLeave={handleDragLeave}
           onDragOver={(e) => e.preventDefault()}
           onDrop={handleDrop}
-          className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-4 py-6 text-center transition-colors ${
-            dragging
-              ? 'border-foreground bg-white/5'
-              : 'border-white/20 hover:border-white/40'
-          }`}
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            borderRadius: 2,
+            borderWidth: 2,
+            borderStyle: 'dashed',
+            borderColor: dragging ? 'text.primary' : 'divider',
+            bgcolor: dragging ? 'action.hover' : 'transparent',
+            px: 2,
+            py: 3,
+            textAlign: 'center',
+            transition: 'border-color 0.15s, background-color 0.15s',
+            '&:hover': { borderColor: 'text.secondary' },
+          }}
         >
-          <p className="text-sm opacity-60">
+          <Typography variant="body2" sx={{ opacity: 0.6 }}>
             {pdf ? pdf.name : 'Drop a PDF here, or click to browse'}
-          </p>
+          </Typography>
           <input
             ref={inputRef}
             type="file"
@@ -101,31 +120,35 @@ export function PdfUploadForm({
               const file = e.target.files?.[0]
               if (file) acceptFile(file)
             }}
-            className="sr-only"
+            style={{
+              position: 'absolute',
+              width: 1,
+              height: 1,
+              overflow: 'hidden',
+              clip: 'rect(0 0 0 0)',
+            }}
           />
-        </div>
-      </div>
+        </Box>
+      </Box>
 
-      {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+      {error && (
+        <Typography variant="body2" color="error" sx={{ mt: 1.5 }}>
+          {error}
+        </Typography>
+      )}
 
-      <div className="mt-5 flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={saving}
-          className="cursor-pointer rounded-md px-4 py-2 text-sm opacity-70 hover:opacity-100 disabled:opacity-40"
-        >
+      <Stack direction="row" spacing={1} sx={{ mt: 2.5, justifyContent: 'flex-end' }}>
+        <Button variant="text" onClick={onCancel} disabled={saving}>
           {cancelLabel}
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant="contained"
           onClick={submit}
           disabled={saving || (requirePdf && !pdf)}
-          className="cursor-pointer rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-50"
         >
           {saving ? submittingLabel : submitLabel}
-        </button>
-      </div>
+        </Button>
+      </Stack>
     </>
   )
 }

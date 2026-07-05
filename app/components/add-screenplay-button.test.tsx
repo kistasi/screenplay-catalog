@@ -41,7 +41,7 @@ afterEach(() => {
 })
 
 async function openModal() {
-  await userEvent.click(screen.getByRole('button', { name: '+ Add screenplay' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Add screenplay' }))
 }
 
 const placeholder = 'Search for a film or TV show…'
@@ -156,7 +156,7 @@ describe('AddScreenplayButton', () => {
   it('closes the modal from the Esc button', async () => {
     render(<AddScreenplayButton onAdd={vi.fn()} />)
     await openModal()
-    const dialog = screen.getByPlaceholderText(placeholder).closest('div')!
+    const dialog = screen.getByRole('dialog')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
     expect(screen.queryByPlaceholderText(placeholder)).not.toBeInTheDocument()
   })

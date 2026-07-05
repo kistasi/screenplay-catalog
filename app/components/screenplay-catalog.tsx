@@ -4,9 +4,28 @@ import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import type { MovieScreenplay, Screenplay, TmdbResult, TvScreenplay } from '@/lib/types'
 import { screenplayKey } from '@/lib/types'
+import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
+import ButtonBase from '@mui/material/ButtonBase'
+import Container from '@mui/material/Container'
+import Link from '@mui/material/Link'
+import Modal from '@mui/material/Modal'
+import Paper from '@mui/material/Paper'
+import Stack from '@mui/material/Stack'
+import Table from '@mui/material/Table'
+import TableBody from '@mui/material/TableBody'
+import TableCell from '@mui/material/TableCell'
+import TableContainer from '@mui/material/TableContainer'
+import TableHead from '@mui/material/TableHead'
+import TableRow from '@mui/material/TableRow'
+import MuiTab from '@mui/material/Tab'
+import Tabs from '@mui/material/Tabs'
+import TextField from '@mui/material/TextField'
+import Typography from '@mui/material/Typography'
+import DeleteIcon from '@mui/icons-material/Delete'
+import EditIcon from '@mui/icons-material/Edit'
 import AddScreenplayButton from './add-screenplay-button'
 import EditScreenplayModal from './edit-screenplay-modal'
-import { useEscapeKey } from './modal'
 import { Poster } from './poster'
 import { TvEpisodeManager } from './tv-episode-manager'
 
@@ -177,36 +196,40 @@ export default function ScreenplayCatalog() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-6 py-10">
-      <header className="mb-8 flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">Screenplay Catalog</h1>
+    <Container maxWidth="md" sx={{ py: 5 }}>
+      <Stack
+        direction="row"
+        spacing={2}
+        sx={{ mb: 4, alignItems: 'center', justifyContent: 'space-between' }}
+      >
+        <Typography variant="h4" component="h1" sx={{ fontWeight: 600 }}>
+          Screenplay Catalog
+        </Typography>
         <AddScreenplayButton onAdd={addScreenplay} />
-      </header>
+      </Stack>
 
-      <div className="mb-6 flex gap-1 border-b border-foreground/20">
-        <TabButton active={tab === 'movie'} onClick={() => switchTab('movie')}>
-          Movies{movies.length > 0 && ` (${movies.length})`}
-        </TabButton>
-        <TabButton active={tab === 'tv'} onClick={() => switchTab('tv')}>
-          Shows{shows.length > 0 && ` (${shows.length})`}
-        </TabButton>
-      </div>
+      <Tabs
+        value={tab}
+        onChange={(_, next: Tab) => switchTab(next)}
+        sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}
+      >
+        <MuiTab value="movie" label={`Movies${movies.length > 0 ? ` (${movies.length})` : ''}`} />
+        <MuiTab value="tv" label={`Shows${shows.length > 0 ? ` (${shows.length})` : ''}`} />
+      </Tabs>
 
       {!loading && active.length > 0 && (
-        <div className="mb-4 flex flex-wrap items-center gap-3">
-          <input
+        <Stack
+          direction="row"
+          sx={{ mb: 2.5, flexWrap: 'wrap', alignItems: 'center', gap: 2 }}
+        >
+          <TextField
+            size="small"
             type="search"
             value={titleQuery}
             onChange={(e) => setTitleQuery(e.target.value)}
             placeholder="Search title…"
-            className="rounded-md border border-foreground/30 bg-background px-3 py-1.5 text-sm placeholder:opacity-50"
           />
-          <FilterSelect
-            label="Year"
-            value={yearFilter}
-            options={years}
-            onChange={setYearFilter}
-          />
+          <FilterSelect label="Year" value={yearFilter} options={years} onChange={setYearFilter} />
           <FilterSelect
             label="Director"
             value={directorFilter}
@@ -220,30 +243,30 @@ export default function ScreenplayCatalog() {
             onChange={setWriterFilter}
           />
           {(directorFilter || writerFilter || yearFilter || titleQuery) && (
-            <button
-              type="button"
+            <Button
+              variant="text"
+              size="small"
               onClick={() => {
                 setDirectorFilter('')
                 setWriterFilter('')
                 setYearFilter('')
                 setTitleQuery('')
               }}
-              className="cursor-pointer text-sm opacity-60 underline underline-offset-2 hover:opacity-100"
             >
               Clear filters
-            </button>
+            </Button>
           )}
-        </div>
+        </Stack>
       )}
 
       {loading ? (
-        <p className="p-10 text-center text-sm opacity-60">Loading…</p>
+        <EmptyState>Loading…</EmptyState>
       ) : active.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-foreground/20 p-10 text-center text-sm opacity-60">
+        <EmptyState dashed>
           {tab === 'movie'
             ? 'No movies yet. Click “Add screenplay” to search for a film.'
             : 'No shows yet. Click “Add screenplay” to search for a TV show.'}
-        </p>
+        </EmptyState>
       ) : tab === 'movie' ? (
         <MoviesTable
           movies={filteredMovies}
@@ -272,10 +295,7 @@ export default function ScreenplayCatalog() {
       )}
 
       {posterView?.posterUrl && (
-        <PosterModal
-          screenplay={posterView}
-          onClose={() => setPosterView(null)}
-        />
+        <PosterModal screenplay={posterView} onClose={() => setPosterView(null)} />
       )}
 
       {editingMovie && (
@@ -285,31 +305,29 @@ export default function ScreenplayCatalog() {
           onSave={(pdf) => saveMoviePdf(editingMovie, pdf)}
         />
       )}
-    </div>
+    </Container>
   )
 }
 
-function TabButton({
-  active,
-  onClick,
+function EmptyState({
   children,
+  dashed = false,
 }: {
-  active: boolean
-  onClick: () => void
   children: React.ReactNode
+  dashed?: boolean
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`cursor-pointer border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
-        active
-          ? 'border-foreground text-foreground'
-          : 'border-transparent opacity-60 hover:opacity-100'
-      }`}
+    <Paper
+      variant="outlined"
+      sx={{
+        p: 5,
+        textAlign: 'center',
+        borderStyle: dashed ? 'dashed' : 'solid',
+        opacity: 0.6,
+      }}
     >
-      {children}
-    </button>
+      <Typography variant="body2">{children}</Typography>
+    </Paper>
   )
 }
 
@@ -333,105 +351,108 @@ function MoviesTable({
   onFilterWriter: (name: string) => void
 }) {
   if (movies.length === 0) {
-    return (
-      <p className="rounded-lg border border-dashed border-foreground/20 p-10 text-center text-sm opacity-60">
-        No movies match the selected filters.
-      </p>
-    )
+    return <EmptyState dashed>No movies match the selected filters.</EmptyState>
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse border border-foreground/30 text-sm">
-        <thead>
-          <tr className="bg-foreground/5 text-left">
-            <Th>Poster</Th>
-            <Th>Title</Th>
-            <Th>Year</Th>
-            <Th>Director(s)</Th>
-            <Th>Writer(s)</Th>
-            <Th>Screenplay</Th>
-            <Th>
-              <span className="sr-only">Actions</span>
-            </Th>
-          </tr>
-        </thead>
-        <tbody>
+    <TableContainer component={Paper} variant="outlined">
+      <Table size="small">
+        <TableHead>
+          <TableRow sx={{ '& th': { fontWeight: 600, bgcolor: 'action.hover' } }}>
+            <TableCell>Poster</TableCell>
+            <TableCell>Title</TableCell>
+            <TableCell>Year</TableCell>
+            <TableCell>Director(s)</TableCell>
+            <TableCell>Writer(s)</TableCell>
+            <TableCell>Screenplay</TableCell>
+            <TableCell>
+              <Box component="span" sx={visuallyHidden}>
+                Actions
+              </Box>
+            </TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
           {movies.map((s) => (
-            <tr key={screenplayKey(s)} className="hover:bg-foreground/[0.04]">
-              <Td>
-                <PosterButton
-                  screenplay={s}
-                  className="h-12 w-8"
-                  placeholderText="text-[10px]"
-                  onView={() => onView(s)}
-                />
-              </Td>
-              <Td>
-                <span className="font-medium">{s.title}</span>
-              </Td>
-              <Td>
+            <TableRow key={screenplayKey(s)} hover>
+              <TableCell>
+                <PosterButton screenplay={s} width={32} height={48} onView={() => onView(s)} />
+              </TableCell>
+              <TableCell>
+                <Typography sx={{ fontWeight: 500 }}>{s.title}</Typography>
+              </TableCell>
+              <TableCell>
                 {s.year ? (
-                  <button
+                  <Link
+                    component="button"
                     type="button"
+                    underline="hover"
                     onClick={() => onFilterYear(s.year!)}
-                    className="cursor-pointer underline decoration-dotted underline-offset-2 hover:decoration-solid"
                     title={`Filter by ${s.year}`}
                   >
                     {s.year}
-                  </button>
+                  </Link>
                 ) : (
                   '—'
                 )}
-              </Td>
-              <Td>
+              </TableCell>
+              <TableCell>
                 <NameList names={s.directors} onSelect={onFilterDirector} />
-              </Td>
-              <Td>
+              </TableCell>
+              <TableCell>
                 <NameList names={s.writers} onSelect={onFilterWriter} />
-              </Td>
-              <Td>
+              </TableCell>
+              <TableCell>
                 {s.pdfName ? (
-                  <a
+                  <Link
                     href={`/api/screenplays/${screenplayKey(s)}/pdf`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-400 underline underline-offset-2 hover:opacity-80"
+                    underline="hover"
                     title={s.pdfName}
                   >
                     View PDF
-                  </a>
+                  </Link>
                 ) : (
                   '—'
                 )}
-              </Td>
-              <Td>
-                <div className="flex gap-1">
-                  <button
-                    type="button"
+              </TableCell>
+              <TableCell>
+                <Stack direction="row" spacing={0.5}>
+                  <Button
+                    size="small"
+                    startIcon={<EditIcon fontSize="small" />}
                     onClick={() => onEdit(s)}
                     disabled={deletingKey === screenplayKey(s)}
-                    className="cursor-pointer rounded-md px-2 py-1 text-sm hover:bg-foreground/10 disabled:cursor-default disabled:opacity-50"
                   >
                     Edit
-                  </button>
-                  <button
-                    type="button"
+                  </Button>
+                  <Button
+                    size="small"
+                    color="error"
+                    startIcon={<DeleteIcon fontSize="small" />}
                     onClick={() => onDelete(s)}
                     disabled={deletingKey === screenplayKey(s)}
-                    className="cursor-pointer rounded-md px-2 py-1 text-sm text-red-400 hover:bg-red-400/10 disabled:cursor-default disabled:opacity-50"
                   >
                     {deletingKey === screenplayKey(s) ? 'Deleting…' : 'Delete'}
-                  </button>
-                </div>
-              </Td>
-            </tr>
+                  </Button>
+                </Stack>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
-    </div>
+        </TableBody>
+      </Table>
+    </TableContainer>
   )
 }
+
+const visuallyHidden = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  overflow: 'hidden',
+  clip: 'rect(0 0 0 0)',
+} as const
 
 // One section per show: header (poster/title/credits/delete) followed by
 // its full, always-visible list of attached episode PDFs.
@@ -473,49 +494,49 @@ function ShowsList({
   onFilterWriter: (name: string) => void
 }) {
   if (shows.length === 0) {
-    return (
-      <p className="rounded-lg border border-dashed border-foreground/20 p-10 text-center text-sm opacity-60">
-        No shows match the selected filters.
-      </p>
-    )
+    return <EmptyState dashed>No shows match the selected filters.</EmptyState>
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <Stack spacing={2}>
       {shows.map((s) => (
-        <div key={screenplayKey(s)} className="rounded-lg border border-foreground/20 p-4">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <PosterButton
-                screenplay={s}
-                className="h-[72px] w-12 shrink-0"
-                onView={() => onView(s)}
-              />
-              <div className="min-w-0">
-                <p className="font-medium">
+        <Paper key={screenplayKey(s)} variant="outlined" sx={{ p: 2 }}>
+          <Stack
+            direction="row"
+            spacing={2}
+            sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }}
+          >
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start' }}>
+              <PosterButton screenplay={s} width={48} height={72} onView={() => onView(s)} />
+              <Box sx={{ minWidth: 0 }}>
+                <Typography sx={{ fontWeight: 500 }}>
                   {s.title}
                   {s.year && (
-                    <button
+                    <Link
+                      component="button"
                       type="button"
+                      underline="hover"
                       onClick={() => onFilterYear(s.year!)}
-                      className="ml-1 cursor-pointer opacity-50 underline decoration-dotted underline-offset-2 hover:decoration-solid"
                       title={`Filter by ${s.year}`}
+                      sx={{ ml: 0.5, opacity: 0.5 }}
                     >
                       ({s.year})
-                    </button>
+                    </Link>
                   )}
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
+                </Typography>
+              </Box>
+            </Stack>
+            <Button
+              size="small"
+              color="error"
+              startIcon={<DeleteIcon fontSize="small" />}
               onClick={() => onDelete(s)}
               disabled={deletingKey === screenplayKey(s)}
-              className="shrink-0 cursor-pointer rounded-md px-2 py-1 text-sm text-red-400 hover:bg-red-400/10 disabled:cursor-default disabled:opacity-50"
+              sx={{ flexShrink: 0 }}
             >
               {deletingKey === screenplayKey(s) ? 'Deleting…' : 'Delete show'}
-            </button>
-          </div>
+            </Button>
+          </Stack>
 
           <TvEpisodeManager
             screenplay={s}
@@ -530,9 +551,9 @@ function ShowsList({
             onFilterDirector={onFilterDirector}
             onFilterWriter={onFilterWriter}
           />
-        </div>
+        </Paper>
       ))}
-    </div>
+    </Stack>
   )
 }
 
@@ -540,61 +561,57 @@ function ShowsList({
 // a plain placeholder when there's no poster to view.
 function PosterButton({
   screenplay,
-  className,
-  placeholderText,
+  width,
+  height,
   onView,
 }: {
   screenplay: { posterUrl: string | null; title: string }
-  className: string
-  placeholderText?: string
+  width: number
+  height: number
   onView: () => void
 }) {
   if (!screenplay.posterUrl) {
-    return (
-      <Poster src={null} alt="" className={className} placeholderText={placeholderText} />
-    )
+    return <Poster src={null} alt="" width={width} height={height} />
   }
   return (
-    <button
-      type="button"
+    <ButtonBase
       onClick={onView}
-      className="cursor-pointer rounded ring-offset-2 ring-offset-background transition-opacity hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground/40"
       aria-label={`View poster for ${screenplay.title}`}
+      sx={{ borderRadius: 1, '&:hover': { opacity: 0.8 } }}
     >
-      <Poster src={screenplay.posterUrl} alt="" className={className} />
-    </button>
+      <Poster src={screenplay.posterUrl} alt="" width={width} height={height} />
+    </ButtonBase>
   )
 }
 
-function PosterModal({
-  screenplay,
-  onClose,
-}: {
-  screenplay: Screenplay
-  onClose: () => void
-}) {
-  useEscapeKey(onClose)
-
+function PosterModal({ screenplay, onClose }: { screenplay: Screenplay; onClose: () => void }) {
   // Stored posters are the w200 size; request a larger one for the modal.
   const largeUrl = screenplay.posterUrl?.replace('/w200/', '/w780/')
   if (!largeUrl) return null
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
-      onMouseDown={onClose}
+    <Modal
+      open
+      onClose={onClose}
+      sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3 }}
     >
-      {/* TMDB w780 posters are 780×1170 (2:3); the className scales it to fit. */}
+      {/* TMDB w780 posters are 780×1170 (2:3); the style below scales it to fit. */}
       <Image
         src={largeUrl}
         alt={`Poster for ${screenplay.title}`}
         width={780}
         height={1170}
         sizes="(max-width: 768px) 90vw, 780px"
-        onMouseDown={(e) => e.stopPropagation()}
-        className="h-auto w-auto max-h-[85vh] max-w-[90vw] rounded-lg shadow-2xl"
+        style={{
+          height: 'auto',
+          width: 'auto',
+          maxHeight: '85vh',
+          maxWidth: '90vw',
+          borderRadius: 8,
+          outline: 'none',
+        }}
       />
-    </div>
+    </Modal>
   )
 }
 
@@ -643,14 +660,15 @@ function NameList({
       {names.map((name, i) => (
         <span key={name}>
           {i > 0 && ', '}
-          <button
+          <Link
+            component="button"
             type="button"
+            underline="hover"
             onClick={() => onSelect(name)}
-            className="cursor-pointer underline decoration-dotted underline-offset-2 hover:decoration-solid"
             title={`Filter by ${name}`}
           >
             {name}
-          </button>
+          </Link>
         </span>
       ))}
     </>
@@ -669,12 +687,25 @@ function FilterSelect({
   onChange: (value: string) => void
 }) {
   return (
-    <label className="flex items-center gap-2 text-sm">
-      <span className="opacity-60">{label}:</span>
-      <select
+    <Stack component="label" direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+      <Typography variant="body2" sx={{ opacity: 0.6 }}>
+        {label}:
+      </Typography>
+      <Box
+        component="select"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="cursor-pointer rounded-md border border-foreground/30 bg-background px-2 py-1.5 text-sm"
+        sx={{
+          font: 'inherit',
+          color: 'inherit',
+          bgcolor: 'background.default',
+          border: 1,
+          borderColor: 'divider',
+          borderRadius: 1,
+          px: 1,
+          py: 0.5,
+          cursor: 'pointer',
+        }}
       >
         <option value="">All</option>
         {options.map((name) => (
@@ -682,23 +713,7 @@ function FilterSelect({
             {name}
           </option>
         ))}
-      </select>
-    </label>
-  )
-}
-
-function Th({ children }: { children: React.ReactNode }) {
-  return (
-    <th className="border border-foreground/30 px-4 py-2.5 font-semibold">
-      {children}
-    </th>
-  )
-}
-
-function Td({ children }: { children: React.ReactNode }) {
-  return (
-    <td className="border border-foreground/20 px-4 py-2.5 align-middle">
-      {children}
-    </td>
+      </Box>
+    </Stack>
   )
 }

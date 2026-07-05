@@ -2,7 +2,19 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { TmdbResult } from '@/lib/types'
-import { ModalShell } from './modal'
+import Alert from '@mui/material/Alert'
+import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
+import Chip from '@mui/material/Chip'
+import Dialog from '@mui/material/Dialog'
+import IconButton from '@mui/material/IconButton'
+import List from '@mui/material/List'
+import ListItemButton from '@mui/material/ListItemButton'
+import Stack from '@mui/material/Stack'
+import TextField from '@mui/material/TextField'
+import Typography from '@mui/material/Typography'
+import AddIcon from '@mui/icons-material/Add'
+import CloseIcon from '@mui/icons-material/Close'
 import { PdfUploadForm } from './pdf-upload-form'
 import { Poster } from './poster'
 
@@ -16,13 +28,9 @@ export default function AddScreenplayButton({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="cursor-pointer rounded-full bg-foreground text-background px-5 py-2.5 text-sm font-medium transition-opacity hover:opacity-90"
-      >
-        + Add screenplay
-      </button>
+      <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpen(true)}>
+        Add screenplay
+      </Button>
 
       {open && (
         <AddModal
@@ -48,17 +56,19 @@ function AddModal({
   const [selected, setSelected] = useState<TmdbResult | null>(null)
 
   return (
-    <ModalShell onClose={onClose} className="overflow-hidden">
+    <Dialog
+      open
+      onClose={onClose}
+      fullWidth
+      maxWidth="sm"
+      aria-label="Add screenplay"
+    >
       {selected ? (
-        <UploadStep
-          movie={selected}
-          onBack={() => setSelected(null)}
-          onConfirm={onConfirm}
-        />
+        <UploadStep movie={selected} onBack={() => setSelected(null)} onConfirm={onConfirm} />
       ) : (
         <SearchStep onSelect={setSelected} onClose={onClose} />
       )}
-    </ModalShell>
+    </Dialog>
   )
 }
 
@@ -117,64 +127,82 @@ function SearchStep({
 
   return (
     <>
-      <div className="flex items-center gap-3 border-b border-white/10 p-4">
-        <input
-          ref={inputRef}
-          type="text"
+      <Stack
+        direction="row"
+        spacing={1.5}
+        sx={{ p: 2, borderBottom: 1, borderColor: 'divider', alignItems: 'center' }}
+      >
+        <TextField
+          inputRef={inputRef}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search for a film or TV show…"
-          className="w-full bg-transparent text-base outline-none placeholder:opacity-50"
+          variant="standard"
+          fullWidth
+          slotProps={{ input: { disableUnderline: true } }}
         />
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className="shrink-0 cursor-pointer rounded-md px-2 py-1 text-sm opacity-60 hover:opacity-100"
-        >
-          Esc
-        </button>
-      </div>
+        <IconButton aria-label="Close" onClick={onClose} size="small">
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </Stack>
 
-      <div className="max-h-[55vh] overflow-y-auto">
-        {loading && <p className="p-4 text-sm opacity-60">Searching…</p>}
-        {error && <p className="p-4 text-sm text-red-600">{error}</p>}
+      <Box sx={{ maxHeight: '55vh', overflowY: 'auto' }}>
+        {loading && (
+          <Typography variant="body2" sx={{ p: 2, opacity: 0.6 }}>
+            Searching…
+          </Typography>
+        )}
+        {error && (
+          <Typography variant="body2" color="error" sx={{ p: 2 }}>
+            {error}
+          </Typography>
+        )}
         {!loading && !error && query.trim() && results.length === 0 && (
-          <p className="p-4 text-sm opacity-60">No results found.</p>
+          <Typography variant="body2" sx={{ p: 2, opacity: 0.6 }}>
+            No results found.
+          </Typography>
         )}
 
-        <ul>
+        <List disablePadding>
           {results.map((result) => (
-            <li key={`${result.mediaType}-${result.id}`}>
-              <button
-                type="button"
-                onClick={() => onSelect(result)}
-                className="flex w-full cursor-pointer items-start gap-3 p-3 text-left transition-colors hover:bg-white/5"
-              >
-                <Poster
-                  src={result.posterUrl}
-                  alt=""
-                  className="h-[72px] w-12 shrink-0"
-                />
-                <div className="min-w-0">
-                  <p className="font-medium">
-                    {result.title}
-                    {result.year && (
-                      <span className="opacity-50"> ({result.year})</span>
-                    )}
-                    <MediaTypeBadge mediaType={result.mediaType} />
-                  </p>
-                  {result.overview && (
-                    <p className="mt-0.5 line-clamp-2 text-sm opacity-60">
-                      {result.overview}
-                    </p>
+            <ListItemButton
+              key={`${result.mediaType}-${result.id}`}
+              onClick={() => onSelect(result)}
+              alignItems="flex-start"
+              sx={{ gap: 1.5, py: 1.5 }}
+            >
+              <Poster src={result.posterUrl} alt="" width={48} height={72} />
+              <Box sx={{ minWidth: 0 }}>
+                <Typography sx={{ fontWeight: 500 }}>
+                  {result.title}
+                  {result.year && (
+                    <Typography component="span" sx={{ opacity: 0.5 }}>
+                      {' '}
+                      ({result.year})
+                    </Typography>
                   )}
-                </div>
-              </button>
-            </li>
+                  <MediaTypeBadge mediaType={result.mediaType} />
+                </Typography>
+                {result.overview && (
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      mt: 0.25,
+                      opacity: 0.6,
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {result.overview}
+                  </Typography>
+                )}
+              </Box>
+            </ListItemButton>
           ))}
-        </ul>
-      </div>
+        </List>
+      </Box>
     </>
   )
 }
@@ -189,22 +217,27 @@ function UploadStep({
   onConfirm: (result: TmdbResult, pdf: File | null) => Promise<void>
 }) {
   return (
-    <div className="p-4">
-      <div className="flex items-start gap-3">
-        <Poster src={movie.posterUrl} alt="" className="h-[72px] w-12 shrink-0" />
-        <div className="min-w-0">
-          <p className="font-medium">
+    <Box sx={{ p: 2 }}>
+      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start' }}>
+        <Poster src={movie.posterUrl} alt="" width={48} height={72} />
+        <Box sx={{ minWidth: 0 }}>
+          <Typography sx={{ fontWeight: 500 }}>
             {movie.title}
-            {movie.year && <span className="opacity-50"> ({movie.year})</span>}
+            {movie.year && (
+              <Typography component="span" sx={{ opacity: 0.5 }}>
+                {' '}
+                ({movie.year})
+              </Typography>
+            )}
             <MediaTypeBadge mediaType={movie.mediaType} />
-          </p>
-          <p className="mt-0.5 text-sm opacity-60">
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 0.25, opacity: 0.6 }}>
             {movie.mediaType === 'tv'
               ? 'You can attach episode PDFs after adding the show.'
               : 'Attach the screenplay PDF (optional).'}
-          </p>
-        </div>
-      </div>
+          </Typography>
+        </Box>
+      </Stack>
 
       {movie.mediaType === 'tv' ? (
         <ConfirmAddStep movie={movie} onBack={onBack} onConfirm={onConfirm} />
@@ -218,7 +251,7 @@ function UploadStep({
           onSubmit={(pdf) => onConfirm(movie, pdf)}
         />
       )}
-    </div>
+    </Box>
   )
 }
 
@@ -235,19 +268,18 @@ function ConfirmAddStep({
   const [error, setError] = useState<string | null>(null)
 
   return (
-    <div className="mt-4">
-      {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
-      <div className="flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={onBack}
-          disabled={submitting}
-          className="cursor-pointer rounded-md px-4 py-2 text-sm opacity-70 hover:opacity-100 disabled:opacity-40"
-        >
+    <Box sx={{ mt: 2 }}>
+      {error && (
+        <Alert severity="error" sx={{ mb: 1.5 }}>
+          {error}
+        </Alert>
+      )}
+      <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end' }}>
+        <Button variant="text" onClick={onBack} disabled={submitting}>
           Back
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant="contained"
           disabled={submitting}
           onClick={async () => {
             setSubmitting(true)
@@ -259,19 +291,21 @@ function ConfirmAddStep({
               setSubmitting(false)
             }
           }}
-          className="cursor-pointer rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-50"
         >
           {submitting ? 'Adding…' : 'Add to catalog'}
-        </button>
-      </div>
-    </div>
+        </Button>
+      </Stack>
+    </Box>
   )
 }
 
 function MediaTypeBadge({ mediaType }: { mediaType: TmdbResult['mediaType'] }) {
   return (
-    <span className="ml-2 rounded bg-foreground/10 px-1.5 py-0.5 align-middle text-[10px] font-normal uppercase tracking-wide opacity-60">
-      {mediaType === 'tv' ? 'TV' : 'Movie'}
-    </span>
+    <Chip
+      component="span"
+      label={mediaType === 'tv' ? 'TV' : 'Movie'}
+      size="small"
+      sx={{ ml: 1, height: 18, fontSize: 10, textTransform: 'uppercase', verticalAlign: 'middle' }}
+    />
   )
 }

@@ -180,12 +180,10 @@ describe('PdfUploadForm', () => {
       const zone = dropZone()
 
       fireEvent.dragEnter(zone)
-      await waitFor(() => expect(zone.className).toContain('border-foreground'))
+      await waitFor(() => expect(zone).toHaveAttribute('data-dragging', 'true'))
 
       fireEvent.drop(zone, { dataTransfer: { files: [pdf()] } })
-      await waitFor(() =>
-        expect(zone.className).not.toContain('border-foreground')
-      )
+      await waitFor(() => expect(zone).not.toHaveAttribute('data-dragging'))
     })
 
     it('clears dragging style on dragleave when counter reaches zero', async () => {
@@ -195,12 +193,10 @@ describe('PdfUploadForm', () => {
       fireEvent.dragEnter(zone)
       fireEvent.dragEnter(zone)
       fireEvent.dragLeave(zone)
-      await waitFor(() => expect(zone.className).toContain('border-foreground'))
+      await waitFor(() => expect(zone).toHaveAttribute('data-dragging', 'true'))
 
       fireEvent.dragLeave(zone)
-      await waitFor(() =>
-        expect(zone.className).not.toContain('border-foreground')
-      )
+      await waitFor(() => expect(zone).not.toHaveAttribute('data-dragging'))
     })
   })
 })

@@ -188,7 +188,7 @@ describe('TvEpisodeManager', () => {
     })
 
     const { onSaveEpisodePdf } = renderManager()
-    await userEvent.click(screen.getByRole('button', { name: '+ Add episode PDF' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Add episode PDF' }))
 
     await screen.findByText('Season 2 (10 episodes)')
     await userEvent.click(screen.getByText('Season 2 (10 episodes)'))
@@ -214,7 +214,7 @@ describe('TvEpisodeManager', () => {
   it('can go back from the season picker without adding an episode', async () => {
     fetchMock.mockResolvedValue(okJson({ seasons: [] }))
     renderManager()
-    await userEvent.click(screen.getByRole('button', { name: '+ Add episode PDF' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Add episode PDF' }))
     await waitFor(() => expect(screen.getByText('Pick a season.')).toBeInTheDocument())
     await userEvent.click(screen.getByRole('button', { name: 'Back' }))
     expect(screen.getByText(/Winter Is Coming/)).toBeInTheDocument()
@@ -223,7 +223,7 @@ describe('TvEpisodeManager', () => {
   it('shows an error when the season list fails to load', async () => {
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({ error: 'Boom.' }) } as Response)
     renderManager()
-    await userEvent.click(screen.getByRole('button', { name: '+ Add episode PDF' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Add episode PDF' }))
     expect(await screen.findByText('Boom.')).toBeInTheDocument()
   })
 })
