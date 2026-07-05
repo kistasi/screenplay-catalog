@@ -22,6 +22,29 @@ const show: TvScreenplay = {
   ],
 }
 
+const showWithTwoEpisodes: TvScreenplay = {
+  ...show,
+  episodes: [
+    show.episodes[0],
+    {
+      seasonNumber: 1,
+      episodeNumber: 2,
+      name: 'The Kingsroad',
+      directors: ['Tim Van Patten'],
+      writers: ['David Benioff', 'D. B. Weiss'],
+      pdfName: 'got-s01e02.pdf',
+    },
+    {
+      seasonNumber: 4,
+      episodeNumber: 1,
+      name: 'Two Swords',
+      directors: ['D. B. Weiss'],
+      writers: ['David Benioff'],
+      pdfName: 'got-s04e01.pdf',
+    },
+  ],
+}
+
 function okJson(body: unknown) {
   return { ok: true, json: async () => body } as Response
 }
@@ -39,7 +62,10 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-function renderManager(screenplay: TvScreenplay = show) {
+function renderManager(
+  screenplay: TvScreenplay = show,
+  filters: { directorFilter?: string; writerFilter?: string } = {}
+) {
   const onSaveEpisodePdf = vi.fn().mockResolvedValue(undefined)
   const onRemoveEpisode = vi.fn().mockResolvedValue(undefined)
   const onFilterDirector = vi.fn()
@@ -48,6 +74,8 @@ function renderManager(screenplay: TvScreenplay = show) {
   render(
     <TvEpisodeManager
       screenplay={screenplay}
+      directorFilter={filters.directorFilter}
+      writerFilter={filters.writerFilter}
       onSaveEpisodePdf={onSaveEpisodePdf}
       onRemoveEpisode={onRemoveEpisode}
       onFilterDirector={onFilterDirector}
@@ -86,6 +114,25 @@ describe('TvEpisodeManager', () => {
     expect(onFilterDirector).toHaveBeenCalledWith('Tim Van Patten')
     await userEvent.click(screen.getByText('David Benioff'))
     expect(onFilterWriter).toHaveBeenCalledWith('David Benioff')
+  })
+
+  it('narrows the episode list to those matching the active director filter', () => {
+    renderManager(showWithTwoEpisodes, { directorFilter: 'D. B. Weiss' })
+    expect(screen.getByText(/Two Swords/)).toBeInTheDocument()
+    expect(screen.queryByText(/Winter Is Coming/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/The Kingsroad/)).not.toBeInTheDocument()
+  })
+
+  it('narrows the episode list to those matching the active writer filter', () => {
+    renderManager(showWithTwoEpisodes, { writerFilter: 'D. B. Weiss' })
+    expect(screen.getByText(/Winter Is Coming/)).toBeInTheDocument()
+    expect(screen.getByText(/The Kingsroad/)).toBeInTheDocument()
+    expect(screen.queryByText(/Two Swords/)).not.toBeInTheDocument()
+  })
+
+  it('shows a no-match message when a filter excludes every episode', () => {
+    renderManager(showWithTwoEpisodes, { directorFilter: 'Someone Else' })
+    expect(screen.getByText('No episodes match the selected filters.')).toBeInTheDocument()
   })
 
   it('removes an episode after confirmation', async () => {

@@ -258,6 +258,8 @@ export default function ScreenplayCatalog() {
       ) : (
         <ShowsList
           shows={filteredShows}
+          directorFilter={directorFilter}
+          writerFilter={writerFilter}
           deletingKey={deletingKey}
           onView={setPosterView}
           onDelete={deleteScreenplay}
@@ -435,6 +437,8 @@ function MoviesTable({
 // its full, always-visible list of attached episode PDFs.
 function ShowsList({
   shows,
+  directorFilter,
+  writerFilter,
   deletingKey,
   onView,
   onDelete,
@@ -445,6 +449,8 @@ function ShowsList({
   onFilterWriter,
 }: {
   shows: TvScreenplay[]
+  directorFilter: string
+  writerFilter: string
   deletingKey: string | null
   onView: (s: TvScreenplay) => void
   onDelete: (s: TvScreenplay) => void
@@ -513,6 +519,8 @@ function ShowsList({
 
           <TvEpisodeManager
             screenplay={s}
+            directorFilter={directorFilter}
+            writerFilter={writerFilter}
             onSaveEpisodePdf={(seasonNumber, episodeNumber, name, directors, writers, pdf) =>
               onSaveEpisodePdf(s, seasonNumber, episodeNumber, name, directors, writers, pdf)
             }

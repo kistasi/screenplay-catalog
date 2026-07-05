@@ -20,12 +20,16 @@ type Step =
 
 export function TvEpisodeManager({
   screenplay,
+  directorFilter = '',
+  writerFilter = '',
   onSaveEpisodePdf,
   onRemoveEpisode,
   onFilterDirector,
   onFilterWriter,
 }: {
   screenplay: TvScreenplay
+  directorFilter?: string
+  writerFilter?: string
   onSaveEpisodePdf: (
     seasonNumber: number,
     episodeNumber: number,
@@ -41,8 +45,16 @@ export function TvEpisodeManager({
   const [step, setStep] = useState<Step>({ kind: 'list' })
   const [removingKey, setRemovingKey] = useState<string | null>(null)
 
-  const episodes = [...screenplay.episodes].sort(
+  // Full, sorted episode list — used for lookups (e.g. "is this episode
+  // already saved?") that must hold even when the credit filters below hide
+  // the episode from the rendered list.
+  const allEpisodes = [...screenplay.episodes].sort(
     (a, b) => a.seasonNumber - b.seasonNumber || a.episodeNumber - b.episodeNumber
+  )
+  const episodes = allEpisodes.filter(
+    (e) =>
+      (!directorFilter || e.directors.includes(directorFilter)) &&
+      (!writerFilter || e.writers.includes(writerFilter))
   )
 
   const remove = async (e: Episode) => {
@@ -87,7 +99,7 @@ export function TvEpisodeManager({
   }
 
   if (step.kind === 'upload') {
-    const existing = episodes.find(
+    const existing = allEpisodes.find(
       (e) => e.seasonNumber === step.seasonNumber && e.episodeNumber === step.episodeNumber
     )
     return (
@@ -121,7 +133,11 @@ export function TvEpisodeManager({
   return (
     <div className="mt-3">
       {episodes.length === 0 ? (
-        <p className="text-sm opacity-60">No episode PDFs attached yet.</p>
+        <p className="text-sm opacity-60">
+          {allEpisodes.length === 0
+            ? 'No episode PDFs attached yet.'
+            : 'No episodes match the selected filters.'}
+        </p>
       ) : (
         <ul className="max-h-[45vh] divide-y divide-white/10 overflow-y-auto rounded-md border border-white/10">
           {episodes.map((e) => {
