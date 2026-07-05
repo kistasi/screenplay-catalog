@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import type { TmdbMovie } from '@/lib/types'
+import type { TmdbResult } from '@/lib/types'
 import { ModalShell } from './modal'
 import { PdfUploadForm } from './pdf-upload-form'
 import { Poster } from './poster'
@@ -10,7 +10,7 @@ export default function AddScreenplayButton({
   onAdd,
 }: {
   // Resolves once the screenplay is persisted; rejects on failure.
-  onAdd: (movie: TmdbMovie, pdf: File | null) => Promise<void>
+  onAdd: (result: TmdbResult, pdf: File | null) => Promise<void>
 }) {
   const [open, setOpen] = useState(false)
 
@@ -42,10 +42,10 @@ function AddModal({
   onConfirm,
 }: {
   onClose: () => void
-  onConfirm: (movie: TmdbMovie, pdf: File | null) => Promise<void>
+  onConfirm: (result: TmdbResult, pdf: File | null) => Promise<void>
 }) {
-  // The film picked in step one; null while still searching.
-  const [selected, setSelected] = useState<TmdbMovie | null>(null)
+  // The title picked in step one; null while still searching.
+  const [selected, setSelected] = useState<TmdbResult | null>(null)
 
   return (
     <ModalShell onClose={onClose} className="overflow-hidden">
@@ -66,11 +66,11 @@ function SearchStep({
   onSelect,
   onClose,
 }: {
-  onSelect: (movie: TmdbMovie) => void
+  onSelect: (result: TmdbResult) => void
   onClose: () => void
 }) {
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<TmdbMovie[]>([])
+  const [results, setResults] = useState<TmdbResult[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -123,7 +123,7 @@ function SearchStep({
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search for a film…"
+          placeholder="Search for a film or TV show…"
           className="w-full bg-transparent text-base outline-none placeholder:opacity-50"
         />
         <button
@@ -140,32 +140,33 @@ function SearchStep({
         {loading && <p className="p-4 text-sm opacity-60">Searching…</p>}
         {error && <p className="p-4 text-sm text-red-600">{error}</p>}
         {!loading && !error && query.trim() && results.length === 0 && (
-          <p className="p-4 text-sm opacity-60">No films found.</p>
+          <p className="p-4 text-sm opacity-60">No results found.</p>
         )}
 
         <ul>
-          {results.map((movie) => (
-            <li key={movie.id}>
+          {results.map((result) => (
+            <li key={`${result.mediaType}-${result.id}`}>
               <button
                 type="button"
-                onClick={() => onSelect(movie)}
+                onClick={() => onSelect(result)}
                 className="flex w-full cursor-pointer items-start gap-3 p-3 text-left transition-colors hover:bg-white/5"
               >
                 <Poster
-                  src={movie.posterUrl}
+                  src={result.posterUrl}
                   alt=""
                   className="h-[72px] w-12 shrink-0"
                 />
                 <div className="min-w-0">
                   <p className="font-medium">
-                    {movie.title}
-                    {movie.year && (
-                      <span className="opacity-50"> ({movie.year})</span>
+                    {result.title}
+                    {result.year && (
+                      <span className="opacity-50"> ({result.year})</span>
                     )}
+                    <MediaTypeBadge mediaType={result.mediaType} />
                   </p>
-                  {movie.overview && (
+                  {result.overview && (
                     <p className="mt-0.5 line-clamp-2 text-sm opacity-60">
-                      {movie.overview}
+                      {result.overview}
                     </p>
                   )}
                 </div>
@@ -183,9 +184,9 @@ function UploadStep({
   onBack,
   onConfirm,
 }: {
-  movie: TmdbMovie
+  movie: TmdbResult
   onBack: () => void
-  onConfirm: (movie: TmdbMovie, pdf: File | null) => Promise<void>
+  onConfirm: (result: TmdbResult, pdf: File | null) => Promise<void>
 }) {
   return (
     <div className="p-4">
@@ -195,21 +196,82 @@ function UploadStep({
           <p className="font-medium">
             {movie.title}
             {movie.year && <span className="opacity-50"> ({movie.year})</span>}
+            <MediaTypeBadge mediaType={movie.mediaType} />
           </p>
           <p className="mt-0.5 text-sm opacity-60">
-            Attach the screenplay PDF (optional).
+            {movie.mediaType === 'tv'
+              ? 'You can attach episode PDFs after adding the show.'
+              : 'Attach the screenplay PDF (optional).'}
           </p>
         </div>
       </div>
 
-      <PdfUploadForm
-        cancelLabel="Back"
-        submitLabel="Add to catalog"
-        submittingLabel="Adding…"
-        requirePdf={false}
-        onCancel={onBack}
-        onSubmit={(pdf) => onConfirm(movie, pdf)}
-      />
+      {movie.mediaType === 'tv' ? (
+        <ConfirmAddStep movie={movie} onBack={onBack} onConfirm={onConfirm} />
+      ) : (
+        <PdfUploadForm
+          cancelLabel="Back"
+          submitLabel="Add to catalog"
+          submittingLabel="Adding…"
+          requirePdf={false}
+          onCancel={onBack}
+          onSubmit={(pdf) => onConfirm(movie, pdf)}
+        />
+      )}
     </div>
+  )
+}
+
+function ConfirmAddStep({
+  movie,
+  onBack,
+  onConfirm,
+}: {
+  movie: TmdbResult
+  onBack: () => void
+  onConfirm: (result: TmdbResult, pdf: File | null) => Promise<void>
+}) {
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  return (
+    <div className="mt-4">
+      {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
+      <div className="flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={submitting}
+          className="cursor-pointer rounded-md px-4 py-2 text-sm opacity-70 hover:opacity-100 disabled:opacity-40"
+        >
+          Back
+        </button>
+        <button
+          type="button"
+          disabled={submitting}
+          onClick={async () => {
+            setSubmitting(true)
+            setError(null)
+            try {
+              await onConfirm(movie, null)
+            } catch (err) {
+              setError((err as Error).message)
+              setSubmitting(false)
+            }
+          }}
+          className="cursor-pointer rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-50"
+        >
+          {submitting ? 'Adding…' : 'Add to catalog'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function MediaTypeBadge({ mediaType }: { mediaType: TmdbResult['mediaType'] }) {
+  return (
+    <span className="ml-2 rounded bg-foreground/10 px-1.5 py-0.5 align-middle text-[10px] font-normal uppercase tracking-wide opacity-60">
+      {mediaType === 'tv' ? 'TV' : 'Movie'}
+    </span>
   )
 }

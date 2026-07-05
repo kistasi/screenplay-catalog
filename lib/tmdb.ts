@@ -1,4 +1,4 @@
-import type { Screenplay, TmdbMovie } from './types'
+import type { MediaType, Screenplay, TmdbResult, TvEpisodeInfo, TvSeason } from './types'
 
 const POSTER_BASE = 'https://image.tmdb.org/t/p/w200'
 
@@ -13,6 +13,14 @@ export class TmdbError extends Error {
 }
 
 type TmdbCrewMember = { name: string; job?: string; department?: string }
+
+// A TV show's crew, aggregated across all episodes: each member carries every
+// job they've held on the show rather than a single `job` string.
+type TmdbAggregateCrewMember = {
+  name: string
+  department?: string
+  jobs?: Array<{ job: string }>
+}
 
 // Build and send a TMDB request, attaching credentials. TMDB accepts either a
 // v4 "Read Access Token" (a JWT, sent as a Bearer header) or a classic v3 API
@@ -43,13 +51,13 @@ function posterUrl(posterPath?: string | null): string | null {
   return posterPath ? `${POSTER_BASE}${posterPath}` : null
 }
 
-function yearFromReleaseDate(releaseDate?: string): string | null {
-  return releaseDate ? releaseDate.slice(0, 4) : null
+function yearFromDate(date?: string): string | null {
+  return date ? date.slice(0, 4) : null
 }
 
-/** Search TMDB for movies matching a free-text query. */
-export async function searchMovies(query: string): Promise<TmdbMovie[]> {
-  const res = await tmdbRequest('/search/movie', {
+/** Search TMDB for movies and TV shows matching a free-text query. */
+export async function searchTitles(query: string): Promise<TmdbResult[]> {
+  const res = await tmdbRequest('/search/multi', {
     query,
     include_adult: 'false',
     page: '1',
@@ -62,23 +70,44 @@ export async function searchMovies(query: string): Promise<TmdbMovie[]> {
   const data = (await res.json()) as {
     results?: Array<{
       id: number
-      title: string
+      media_type?: string
+      title?: string
+      name?: string
       release_date?: string
+      first_air_date?: string
       overview?: string
       poster_path?: string | null
     }>
   }
 
-  return (data.results ?? []).map((m) => ({
-    id: m.id,
-    title: m.title,
-    year: yearFromReleaseDate(m.release_date),
-    overview: m.overview ?? '',
-    posterUrl: posterUrl(m.poster_path),
-  }))
+  return (data.results ?? [])
+    // /search/multi also returns people; only movies and TV shows belong here.
+    .filter(
+      (r): r is typeof r & { media_type: MediaType } =>
+        r.media_type === 'movie' || r.media_type === 'tv'
+    )
+    .map((r) => ({
+      id: r.id,
+      mediaType: r.media_type,
+      title: (r.media_type === 'movie' ? r.title : r.name) ?? '',
+      year: yearFromDate(r.media_type === 'movie' ? r.release_date : r.first_air_date),
+      overview: r.overview ?? '',
+      posterUrl: posterUrl(r.poster_path),
+    }))
 }
 
 function uniqueNames(crew: TmdbCrewMember[], match: (c: TmdbCrewMember) => boolean) {
+  const seen = new Set<string>()
+  for (const member of crew) {
+    if (match(member)) seen.add(member.name)
+  }
+  return [...seen]
+}
+
+function uniqueAggregateNames(
+  crew: TmdbAggregateCrewMember[],
+  match: (c: TmdbAggregateCrewMember) => boolean
+) {
   const seen = new Set<string>()
   for (const member of crew) {
     if (match(member)) seen.add(member.name)
@@ -90,7 +119,7 @@ function uniqueNames(crew: TmdbCrewMember[], match: (c: TmdbCrewMember) => boole
  * Fetch a movie's details plus credits and shape it into a Screenplay,
  * extracting director(s) and writer(s) from the crew.
  */
-export async function getScreenplay(id: number): Promise<Screenplay> {
+async function getMovie(id: number): Promise<Screenplay> {
   const res = await tmdbRequest(`/movie/${id}`, {
     append_to_response: 'credits',
   })
@@ -114,12 +143,116 @@ export async function getScreenplay(id: number): Promise<Screenplay> {
 
   return {
     id: data.id,
+    mediaType: 'movie',
     title: data.title,
-    year: yearFromReleaseDate(data.release_date),
+    year: yearFromDate(data.release_date),
     directors: uniqueNames(crew, (c) => c.job === 'Director'),
     // The "Writing" department covers Screenplay, Writer, Story, Author, etc.
     writers: uniqueNames(crew, (c) => c.department === 'Writing'),
     posterUrl: posterUrl(data.poster_path),
     pdfName: null,
   }
+}
+
+/**
+ * Fetch a TV show's details plus credits aggregated across every episode,
+ * and shape it into a Screenplay. Directors/writers come from the aggregate
+ * crew; if no episodes carry a "Director" credit (common for shows TMDB
+ * hasn't fully indexed), fall back to the show's credited creators.
+ */
+async function getTvShow(id: number): Promise<Screenplay> {
+  const res = await tmdbRequest(`/tv/${id}`, {
+    append_to_response: 'aggregate_credits',
+  })
+
+  if (res.status === 404) {
+    throw new TmdbError(`No TV show found with id ${id}.`, 404)
+  }
+  if (!res.ok) {
+    throw new TmdbError(`TMDB request failed (${res.status}).`, 502)
+  }
+
+  const data = (await res.json()) as {
+    id: number
+    name: string
+    first_air_date?: string
+    poster_path?: string | null
+    created_by?: Array<{ name: string }>
+    aggregate_credits?: { crew?: TmdbAggregateCrewMember[] }
+  }
+
+  const crew = data.aggregate_credits?.crew ?? []
+  const directors = uniqueAggregateNames(
+    crew,
+    (c) => c.department === 'Directing' && (c.jobs ?? []).some((j) => j.job === 'Director')
+  )
+  const writers = uniqueAggregateNames(crew, (c) => c.department === 'Writing')
+
+  return {
+    id: data.id,
+    mediaType: 'tv',
+    title: data.name,
+    year: yearFromDate(data.first_air_date),
+    directors: directors.length > 0 ? directors : (data.created_by ?? []).map((c) => c.name),
+    writers,
+    posterUrl: posterUrl(data.poster_path),
+    episodes: [],
+  }
+}
+
+/** Fetch a movie's or TV show's full details and shape them into a Screenplay. */
+export async function getScreenplay(mediaType: MediaType, id: number): Promise<Screenplay> {
+  return mediaType === 'movie' ? getMovie(id) : getTvShow(id)
+}
+
+/** List a TV show's seasons, used to let a user pick which episode to attach a PDF to. */
+export async function getTvSeasons(id: number): Promise<TvSeason[]> {
+  const res = await tmdbRequest(`/tv/${id}`, {})
+
+  if (res.status === 404) {
+    throw new TmdbError(`No TV show found with id ${id}.`, 404)
+  }
+  if (!res.ok) {
+    throw new TmdbError(`TMDB request failed (${res.status}).`, 502)
+  }
+
+  const data = (await res.json()) as {
+    seasons?: Array<{ season_number: number; name: string; episode_count: number }>
+  }
+
+  return (data.seasons ?? []).map((s) => ({
+    seasonNumber: s.season_number,
+    name: s.name,
+    episodeCount: s.episode_count,
+  }))
+}
+
+/** List a season's episodes, used to let a user pick which episode to attach a PDF to. */
+export async function getSeasonEpisodes(id: number, seasonNumber: number): Promise<TvEpisodeInfo[]> {
+  const res = await tmdbRequest(`/tv/${id}/season/${seasonNumber}`, {})
+
+  if (res.status === 404) {
+    throw new TmdbError(`No season ${seasonNumber} found for show ${id}.`, 404)
+  }
+  if (!res.ok) {
+    throw new TmdbError(`TMDB request failed (${res.status}).`, 502)
+  }
+
+  const data = (await res.json()) as {
+    episodes?: Array<{
+      episode_number: number
+      name: string
+      crew?: TmdbCrewMember[]
+    }>
+  }
+
+  return (data.episodes ?? []).map((e) => {
+    const crew = e.crew ?? []
+    return {
+      episodeNumber: e.episode_number,
+      name: e.name,
+      directors: uniqueNames(crew, (c) => c.job === 'Director'),
+      writers: uniqueNames(crew, (c) => c.department === 'Writing'),
+    }
+  })
 }

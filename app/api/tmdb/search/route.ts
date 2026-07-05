@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { searchMovies, TmdbError } from '@/lib/tmdb'
+import { searchTitles, TmdbError } from '@/lib/tmdb'
 
 export async function GET(request: NextRequest) {
   const query = request.nextUrl.searchParams.get('query')?.trim()
@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const results = await searchMovies(query)
+    const results = await searchTitles(query)
     return NextResponse.json({ results })
   } catch (err) {
     if (err instanceof TmdbError) {

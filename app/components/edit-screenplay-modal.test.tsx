@@ -2,10 +2,11 @@ import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import EditScreenplayModal from './edit-screenplay-modal'
-import type { Screenplay } from '@/lib/types'
+import type { MovieScreenplay } from '@/lib/types'
 
-const base: Screenplay = {
+const base: MovieScreenplay = {
   id: 1,
+  mediaType: 'movie',
   title: 'The Matrix',
   year: '1999',
   directors: [],

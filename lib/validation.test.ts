@@ -1,37 +1,42 @@
 import { describe, expect, it } from 'vitest'
 import { NextResponse } from 'next/server'
-import { parseRouteId, pdfFromForm } from './validation'
+import { parseScreenplayKey, pdfFromForm } from './validation'
 
 function pdfFile(name = 'script.pdf', type = 'application/pdf', body = '%PDF') {
   return new File([body], name, { type })
 }
 
-describe('parseRouteId', () => {
-  it('returns the number for an integer string', () => {
-    expect(parseRouteId('42')).toBe(42)
+describe('parseScreenplayKey', () => {
+  it('parses a movie key', () => {
+    expect(parseScreenplayKey('movie-42')).toEqual({ mediaType: 'movie', id: 42 })
   })
 
-  it('parses negative and zero integers (range is not its job)', () => {
-    expect(parseRouteId('0')).toBe(0)
-    expect(parseRouteId('-7')).toBe(-7)
+  it('parses a tv key', () => {
+    expect(parseScreenplayKey('tv-1399')).toEqual({ mediaType: 'tv', id: 1399 })
   })
 
-  it('returns a 400 response for non-integer input', async () => {
-    const res = parseRouteId('not-a-number')
+  it('parses zero as a valid id', () => {
+    expect(parseScreenplayKey('movie-0')).toEqual({ mediaType: 'movie', id: 0 })
+  })
+
+  it('returns a 400 response for an unknown media type', async () => {
+    const res = parseScreenplayKey('book-42')
     expect(res).toBeInstanceOf(NextResponse)
     const body = res as NextResponse
     expect(body.status).toBe(400)
-    await expect(body.json()).resolves.toEqual({ error: 'Invalid id.' })
+    await expect(body.json()).resolves.toEqual({ error: 'Invalid screenplay id.' })
   })
 
-  it('rejects fractional values', () => {
-    expect(parseRouteId('3.5')).toBeInstanceOf(NextResponse)
+  it('returns a 400 response for a non-integer id', () => {
+    expect(parseScreenplayKey('movie-not-a-number')).toBeInstanceOf(NextResponse)
   })
 
-  it('rejects an empty string', () => {
-    // Number('') is 0, but Number.isInteger(0) is true — guard the actual edge.
-    // '' coerces to 0 which is an integer, so this documents current behaviour.
-    expect(parseRouteId('')).toBe(0)
+  it('rejects fractional ids', () => {
+    expect(parseScreenplayKey('movie-3.5')).toBeInstanceOf(NextResponse)
+  })
+
+  it('rejects a key with no separator', () => {
+    expect(parseScreenplayKey('42')).toBeInstanceOf(NextResponse)
   })
 })
 

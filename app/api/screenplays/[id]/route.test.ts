@@ -12,7 +12,10 @@ vi.mock('@/lib/screenplays-db', () => ({
   removeScreenplay: vi.fn(),
   updateScreenplay: vi.fn(),
 }))
-vi.mock('@/lib/uploads', () => ({ savePdf: vi.fn(), deletePdf: vi.fn() }))
+vi.mock('@/lib/uploads', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/uploads')>()
+  return { ...actual, savePdf: vi.fn(), deletePdf: vi.fn() }
+})
 
 const mockFind = vi.mocked(findScreenplay)
 const mockRemove = vi.mocked(removeScreenplay)
@@ -22,6 +25,7 @@ const mockDeletePdf = vi.mocked(deletePdf)
 
 const sample = {
   id: 1,
+  mediaType: 'movie' as const,
   title: 'The Matrix',
   year: '1999',
   directors: [],
@@ -36,7 +40,7 @@ function ctx(id: string) {
 }
 
 function patchRequest(form: FormData | null) {
-  return new Request('http://localhost/api/screenplays/1', {
+  return new Request('http://localhost/api/screenplays/movie-1', {
     method: 'PATCH',
     ...(form ? { body: form } : {}),
   })
@@ -53,11 +57,11 @@ afterEach(() => {
 describe('DELETE /api/screenplays/[id]', () => {
   it('removes the screenplay and its PDF', async () => {
     mockRemove.mockResolvedValue([])
-    const res = await DELETE(new Request('http://localhost'), ctx('1'))
+    const res = await DELETE(new Request('http://localhost'), ctx('movie-1'))
 
     expect(res.status).toBe(200)
-    expect(mockRemove).toHaveBeenCalledWith(1)
-    expect(mockDeletePdf).toHaveBeenCalledWith(1)
+    expect(mockRemove).toHaveBeenCalledWith('movie', 1)
+    expect(mockDeletePdf).toHaveBeenCalledWith(null)
     await expect(res.json()).resolves.toEqual({ screenplays: [] })
   })
 
@@ -83,13 +87,13 @@ describe('PATCH /api/screenplays/[id]', () => {
   })
 
   it('requires a PDF in the form', async () => {
-    const res = await PATCH(patchRequest(new FormData()), ctx('1'))
+    const res = await PATCH(patchRequest(new FormData()), ctx('movie-1'))
     expect(res.status).toBe(400)
     await expect(res.json()).resolves.toEqual({ error: 'A PDF file is required.' })
   })
 
   it('rejects a non-PDF upload', async () => {
-    const res = await PATCH(patchRequest(pdfForm('notes.txt', 'text/plain')), ctx('1'))
+    const res = await PATCH(patchRequest(pdfForm('notes.txt', 'text/plain')), ctx('movie-1'))
     expect(res.status).toBe(400)
     await expect(res.json()).resolves.toEqual({
       error: 'Uploaded file must be a PDF.',
@@ -98,7 +102,7 @@ describe('PATCH /api/screenplays/[id]', () => {
 
   it('404s when the screenplay does not exist', async () => {
     mockFind.mockResolvedValue(undefined)
-    const res = await PATCH(patchRequest(pdfForm()), ctx('1'))
+    const res = await PATCH(patchRequest(pdfForm()), ctx('movie-1'))
     expect(res.status).toBe(404)
     expect(mockSavePdf).not.toHaveBeenCalled()
   })
@@ -107,11 +111,11 @@ describe('PATCH /api/screenplays/[id]', () => {
     mockFind.mockResolvedValue(sample)
     mockUpdate.mockResolvedValue([{ ...sample, pdfName: 'script.pdf' }])
 
-    const res = await PATCH(patchRequest(pdfForm()), ctx('1'))
+    const res = await PATCH(patchRequest(pdfForm()), ctx('movie-1'))
 
     expect(res.status).toBe(200)
-    expect(mockSavePdf).toHaveBeenCalledWith(1, expect.any(File))
-    expect(mockUpdate).toHaveBeenCalledWith(1, { pdfName: 'script.pdf' })
+    expect(mockSavePdf).toHaveBeenCalledWith('the-matrix-1999.pdf', expect.any(File))
+    expect(mockUpdate).toHaveBeenCalledWith('movie', 1, { pdfName: 'the-matrix-1999.pdf' })
     await expect(res.json()).resolves.toEqual({
       screenplays: [{ ...sample, pdfName: 'script.pdf' }],
     })

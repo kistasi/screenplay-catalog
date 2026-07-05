@@ -1,14 +1,14 @@
 import { NextRequest } from 'next/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { GET } from './route'
-import { searchMovies, TmdbError } from '@/lib/tmdb'
+import { searchTitles, TmdbError } from '@/lib/tmdb'
 
 vi.mock('@/lib/tmdb', async () => {
   const actual = await vi.importActual<typeof import('@/lib/tmdb')>('@/lib/tmdb')
-  return { ...actual, searchMovies: vi.fn() }
+  return { ...actual, searchTitles: vi.fn() }
 })
 
-const mockSearch = vi.mocked(searchMovies)
+const mockSearch = vi.mocked(searchTitles)
 
 function request(query?: string) {
   const url = new URL('http://localhost/api/tmdb/search')
@@ -38,9 +38,10 @@ describe('GET /api/tmdb/search', () => {
     expect(mockSearch).not.toHaveBeenCalled()
   })
 
-  it('passes the trimmed query to searchMovies and returns its results', async () => {
+  it('passes the trimmed query to searchTitles and returns its results', async () => {
     const movie = {
       id: 1,
+      mediaType: 'movie' as const,
       title: 'The Matrix',
       year: '1999',
       overview: '',

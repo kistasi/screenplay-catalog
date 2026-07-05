@@ -6,6 +6,7 @@ import type { Screenplay } from '@/lib/types'
 
 const matrix: Screenplay = {
   id: 603,
+  mediaType: 'movie',
   title: 'The Matrix',
   year: '1999',
   directors: ['Lana Wachowski'],
@@ -15,12 +16,25 @@ const matrix: Screenplay = {
 }
 const drive: Screenplay = {
   id: 1,
+  mediaType: 'movie',
   title: 'Drive',
   year: '2011',
   directors: ['Nicolas Winding Refn'],
   writers: ['Hossein Amini'],
   posterUrl: null,
   pdfName: null,
+}
+const thrones: Screenplay = {
+  id: 1399,
+  mediaType: 'tv',
+  title: 'Game of Thrones',
+  year: '2011',
+  directors: ['David Nutter'],
+  writers: ['David Benioff'],
+  posterUrl: null,
+  episodes: [
+    { seasonNumber: 1, episodeNumber: 1, name: 'Winter Is Coming', pdfName: 'got-s01e01.pdf' },
+  ],
 }
 
 const fetchMock = vi.fn()
@@ -52,9 +66,7 @@ describe('ScreenplayCatalog', () => {
   it('shows the empty state when the catalog is empty', async () => {
     loadWith([])
     render(<ScreenplayCatalog />)
-    expect(
-      await screen.findByText(/No screenplays yet/)
-    ).toBeInTheDocument()
+    expect(await screen.findByText(/No movies yet/)).toBeInTheDocument()
   })
 
   it('renders a row per screenplay once loaded', async () => {
@@ -70,7 +82,25 @@ describe('ScreenplayCatalog', () => {
     await screen.findByText('The Matrix')
     const links = screen.getAllByRole('link', { name: 'View PDF' })
     expect(links).toHaveLength(1)
-    expect(links[0]).toHaveAttribute('href', '/api/screenplays/603/pdf')
+    expect(links[0]).toHaveAttribute('href', '/api/screenplays/movie-603/pdf')
+  })
+
+  it('keeps movies and shows on separate tabs', async () => {
+    loadWith([matrix, thrones])
+    render(<ScreenplayCatalog />)
+    await screen.findByText('The Matrix')
+    expect(screen.queryByText('Game of Thrones')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: /Shows/ }))
+    expect(screen.getByText('Game of Thrones')).toBeInTheDocument()
+    expect(screen.queryByText('The Matrix')).not.toBeInTheDocument()
+  })
+
+  it('lists individual episode PDFs inline on the Shows tab', async () => {
+    loadWith([thrones])
+    render(<ScreenplayCatalog />)
+    await userEvent.click(screen.getByRole('button', { name: /Shows/ }))
+    expect(await screen.findByText(/Winter Is Coming/)).toBeInTheDocument()
   })
 
   it('filters by title search', async () => {
@@ -113,7 +143,7 @@ describe('ScreenplayCatalog', () => {
 
     await userEvent.type(screen.getByPlaceholderText('Search title…'), 'nomatch')
     expect(
-      screen.getByText('No screenplays match the selected filters.')
+      screen.getByText('No movies match the selected filters.')
     ).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'Clear filters' }))
@@ -145,7 +175,7 @@ describe('ScreenplayCatalog', () => {
       expect(screen.queryByText('The Matrix')).not.toBeInTheDocument()
     )
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/screenplays/603',
+      '/api/screenplays/movie-603',
       expect.objectContaining({ method: 'DELETE' })
     )
   })
@@ -171,10 +201,20 @@ describe('ScreenplayCatalog', () => {
     expect(screen.getByText('Current PDF: matrix.pdf')).toBeInTheDocument()
   })
 
+  it('shows the episode manager (no separate edit step) for a TV show', async () => {
+    loadWith([thrones])
+    render(<ScreenplayCatalog />)
+    await userEvent.click(screen.getByRole('button', { name: /Shows/ }))
+    expect(await screen.findByText(/Winter Is Coming/)).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: '+ Add episode PDF' })
+    ).toBeInTheDocument()
+  })
+
   it('does not render filter controls while loading or when empty', async () => {
     loadWith([])
     render(<ScreenplayCatalog />)
-    await screen.findByText(/No screenplays yet/)
+    await screen.findByText(/No movies yet/)
     expect(screen.queryByPlaceholderText('Search title…')).not.toBeInTheDocument()
   })
 })

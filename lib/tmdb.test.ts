@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { getScreenplay, searchMovies, TmdbError } from './tmdb'
+import { getScreenplay, searchTitles, TmdbError } from './tmdb'
 
 // A stub Response good enough for the code under test (it only reads .ok,
 // .status and .json()).
@@ -23,7 +23,7 @@ afterEach(() => {
 describe('credential handling', () => {
   it('throws a 500 TmdbError when no API key is configured', async () => {
     delete process.env.TMDB_API_KEY
-    await expect(searchMovies('matrix')).rejects.toMatchObject({
+    await expect(searchTitles('matrix')).rejects.toMatchObject({
       name: 'TmdbError',
       status: 500,
     })
@@ -32,7 +32,7 @@ describe('credential handling', () => {
 
   it('sends a classic v3 key as the api_key query param', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ results: [] }))
-    await searchMovies('matrix')
+    await searchTitles('matrix')
 
     const url = new URL(fetchMock.mock.calls[0][0])
     expect(url.searchParams.get('api_key')).toBe('v3-classic-key')
@@ -43,7 +43,7 @@ describe('credential handling', () => {
   it('sends a v4 JWT token as a Bearer header', async () => {
     process.env.TMDB_API_KEY = 'eyJ-this-looks-like-a-jwt'
     fetchMock.mockResolvedValue(jsonResponse({ results: [] }))
-    await searchMovies('matrix')
+    await searchTitles('matrix')
 
     const url = new URL(fetchMock.mock.calls[0][0])
     expect(url.searchParams.get('api_key')).toBeNull()
@@ -53,19 +53,20 @@ describe('credential handling', () => {
 
   it('always requests English results', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ results: [] }))
-    await searchMovies('matrix')
+    await searchTitles('matrix')
     const url = new URL(fetchMock.mock.calls[0][0])
     expect(url.searchParams.get('language')).toBe('en-US')
   })
 })
 
-describe('searchMovies', () => {
-  it('maps TMDB search results into TmdbMovie shape', async () => {
+describe('searchTitles', () => {
+  it('maps a movie search result into TmdbResult shape', async () => {
     fetchMock.mockResolvedValue(
       jsonResponse({
         results: [
           {
             id: 603,
+            media_type: 'movie',
             title: 'The Matrix',
             release_date: '1999-03-30',
             overview: 'A hacker learns the truth.',
@@ -75,10 +76,11 @@ describe('searchMovies', () => {
       })
     )
 
-    const movies = await searchMovies('matrix')
-    expect(movies).toEqual([
+    const results = await searchTitles('matrix')
+    expect(results).toEqual([
       {
         id: 603,
+        mediaType: 'movie',
         title: 'The Matrix',
         year: '1999',
         overview: 'A hacker learns the truth.',
@@ -87,22 +89,66 @@ describe('searchMovies', () => {
     ])
   })
 
-  it('hits the /search/movie endpoint with the query and adult filter', async () => {
+  it('maps a TV search result into TmdbResult shape', async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        results: [
+          {
+            id: 1399,
+            media_type: 'tv',
+            name: 'Game of Thrones',
+            first_air_date: '2011-04-17',
+            overview: 'Nine noble families fight for control.',
+            poster_path: '/got.jpg',
+          },
+        ],
+      })
+    )
+
+    const results = await searchTitles('thrones')
+    expect(results).toEqual([
+      {
+        id: 1399,
+        mediaType: 'tv',
+        title: 'Game of Thrones',
+        year: '2011',
+        overview: 'Nine noble families fight for control.',
+        posterUrl: 'https://image.tmdb.org/t/p/w200/got.jpg',
+      },
+    ])
+  })
+
+  it('filters out non-movie/tv results (e.g. people)', async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        results: [
+          { id: 1, media_type: 'person', name: 'Some Actor' },
+          { id: 2, media_type: 'movie', title: 'A Film' },
+        ],
+      })
+    )
+    const results = await searchTitles('x')
+    expect(results).toHaveLength(1)
+    expect(results[0].mediaType).toBe('movie')
+  })
+
+  it('hits the /search/multi endpoint with the query and adult filter', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ results: [] }))
-    await searchMovies('blade runner')
+    await searchTitles('blade runner')
     const url = new URL(fetchMock.mock.calls[0][0])
-    expect(url.pathname).toBe('/3/search/movie')
+    expect(url.pathname).toBe('/3/search/multi')
     expect(url.searchParams.get('query')).toBe('blade runner')
     expect(url.searchParams.get('include_adult')).toBe('false')
   })
 
   it('handles a missing year, overview and poster gracefully', async () => {
     fetchMock.mockResolvedValue(
-      jsonResponse({ results: [{ id: 1, title: 'Untitled' }] })
+      jsonResponse({ results: [{ id: 1, media_type: 'movie', title: 'Untitled' }] })
     )
-    const [movie] = await searchMovies('x')
-    expect(movie).toEqual({
+    const [result] = await searchTitles('x')
+    expect(result).toEqual({
       id: 1,
+      mediaType: 'movie',
       title: 'Untitled',
       year: null,
       overview: '',
@@ -112,19 +158,19 @@ describe('searchMovies', () => {
 
   it('returns an empty array when TMDB omits results', async () => {
     fetchMock.mockResolvedValue(jsonResponse({}))
-    await expect(searchMovies('x')).resolves.toEqual([])
+    await expect(searchTitles('x')).resolves.toEqual([])
   })
 
   it('throws a 502 TmdbError when the upstream request is not ok', async () => {
     fetchMock.mockResolvedValue(jsonResponse({}, { ok: false, status: 500 }))
-    await expect(searchMovies('x')).rejects.toMatchObject({
+    await expect(searchTitles('x')).rejects.toMatchObject({
       name: 'TmdbError',
       status: 502,
     })
   })
 })
 
-describe('getScreenplay', () => {
+describe('getScreenplay (movie)', () => {
   const movieBody = {
     id: 603,
     title: 'The Matrix',
@@ -143,9 +189,10 @@ describe('getScreenplay', () => {
 
   it('shapes details + credits into a Screenplay', async () => {
     fetchMock.mockResolvedValue(jsonResponse(movieBody))
-    const screenplay = await getScreenplay(603)
+    const screenplay = await getScreenplay('movie', 603)
     expect(screenplay).toEqual({
       id: 603,
+      mediaType: 'movie',
       title: 'The Matrix',
       year: '1999',
       directors: ['Lana Wachowski', 'Lilly Wachowski'],
@@ -157,7 +204,7 @@ describe('getScreenplay', () => {
 
   it('requests credits via append_to_response', async () => {
     fetchMock.mockResolvedValue(jsonResponse(movieBody))
-    await getScreenplay(603)
+    await getScreenplay('movie', 603)
     const url = new URL(fetchMock.mock.calls[0][0])
     expect(url.pathname).toBe('/3/movie/603')
     expect(url.searchParams.get('append_to_response')).toBe('credits')
@@ -177,21 +224,21 @@ describe('getScreenplay', () => {
         },
       })
     )
-    const s = await getScreenplay(1)
+    const s = await getScreenplay('movie', 1)
     expect(s.directors).toEqual(['A. Director'])
     expect(s.writers).toEqual(['A. Director'])
   })
 
   it('returns empty credit arrays when crew is absent', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ id: 1, title: 'No Crew' }))
-    const s = await getScreenplay(1)
+    const s = await getScreenplay('movie', 1)
     expect(s.directors).toEqual([])
     expect(s.writers).toEqual([])
   })
 
   it('throws a 404 TmdbError when the film is unknown', async () => {
     fetchMock.mockResolvedValue(jsonResponse({}, { ok: false, status: 404 }))
-    await expect(getScreenplay(999)).rejects.toMatchObject({
+    await expect(getScreenplay('movie', 999)).rejects.toMatchObject({
       name: 'TmdbError',
       status: 404,
     })
@@ -199,9 +246,94 @@ describe('getScreenplay', () => {
 
   it('throws a 502 TmdbError for other upstream failures', async () => {
     fetchMock.mockResolvedValue(jsonResponse({}, { ok: false, status: 503 }))
-    await expect(getScreenplay(1)).rejects.toMatchObject({
+    await expect(getScreenplay('movie', 1)).rejects.toMatchObject({
       name: 'TmdbError',
       status: 502,
+    })
+  })
+})
+
+describe('getScreenplay (tv)', () => {
+  const tvBody = {
+    id: 1399,
+    name: 'Game of Thrones',
+    first_air_date: '2011-04-17',
+    poster_path: '/got.jpg',
+    created_by: [{ name: 'David Benioff' }, { name: 'D. B. Weiss' }],
+    aggregate_credits: {
+      crew: [
+        {
+          name: 'David Nutter',
+          department: 'Directing',
+          jobs: [{ job: 'Director' }],
+        },
+        {
+          name: 'David Benioff',
+          department: 'Writing',
+          jobs: [{ job: 'Writer' }],
+        },
+        {
+          name: 'D. B. Weiss',
+          department: 'Writing',
+          jobs: [{ job: 'Writer' }],
+        },
+        {
+          name: 'Some Producer',
+          department: 'Production',
+          jobs: [{ job: 'Executive Producer' }],
+        },
+      ],
+    },
+  }
+
+  it('shapes details + aggregate credits into a Screenplay', async () => {
+    fetchMock.mockResolvedValue(jsonResponse(tvBody))
+    const screenplay = await getScreenplay('tv', 1399)
+    expect(screenplay).toEqual({
+      id: 1399,
+      mediaType: 'tv',
+      title: 'Game of Thrones',
+      year: '2011',
+      directors: ['David Nutter'],
+      writers: ['David Benioff', 'D. B. Weiss'],
+      posterUrl: 'https://image.tmdb.org/t/p/w200/got.jpg',
+      episodes: [],
+    })
+  })
+
+  it('requests aggregate_credits via append_to_response', async () => {
+    fetchMock.mockResolvedValue(jsonResponse(tvBody))
+    await getScreenplay('tv', 1399)
+    const url = new URL(fetchMock.mock.calls[0][0])
+    expect(url.pathname).toBe('/3/tv/1399')
+    expect(url.searchParams.get('append_to_response')).toBe('aggregate_credits')
+  })
+
+  it('falls back to created_by when no aggregate director credit exists', async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        id: 1,
+        name: 'No Director Data',
+        created_by: [{ name: 'A Creator' }],
+        aggregate_credits: { crew: [] },
+      })
+    )
+    const s = await getScreenplay('tv', 1)
+    expect(s.directors).toEqual(['A Creator'])
+  })
+
+  it('returns empty credit arrays when crew and created_by are absent', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ id: 1, name: 'No Crew' }))
+    const s = await getScreenplay('tv', 1)
+    expect(s.directors).toEqual([])
+    expect(s.writers).toEqual([])
+  })
+
+  it('throws a 404 TmdbError when the show is unknown', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({}, { ok: false, status: 404 }))
+    await expect(getScreenplay('tv', 999)).rejects.toMatchObject({
+      name: 'TmdbError',
+      status: 404,
     })
   })
 })

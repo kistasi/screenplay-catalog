@@ -26,7 +26,6 @@ RUN addgroup -g 1001 -S nodejs \
   && adduser -u 1001 -S nextjs -G nodejs
 
 # The standalone output bundles only the files needed to run the server.
-COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 

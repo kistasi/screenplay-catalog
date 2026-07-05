@@ -9,7 +9,10 @@ vi.mock('@/lib/screenplays-db', () => ({
   getScreenplays: vi.fn(),
   addScreenplay: vi.fn(),
 }))
-vi.mock('@/lib/uploads', () => ({ savePdf: vi.fn() }))
+vi.mock('@/lib/uploads', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/uploads')>()
+  return { ...actual, savePdf: vi.fn() }
+})
 vi.mock('@/lib/tmdb', async () => {
   // Keep the real TmdbError so `instanceof` checks in the route hold.
   const actual = await vi.importActual<typeof import('@/lib/tmdb')>('@/lib/tmdb')
@@ -23,6 +26,7 @@ const mockSavePdf = vi.mocked(savePdf)
 
 const sampleScreenplay = {
   id: 603,
+  mediaType: 'movie' as const,
   title: 'The Matrix',
   year: '1999',
   directors: ['Lana Wachowski'],
@@ -82,6 +86,7 @@ describe('POST /api/screenplays', () => {
   it('rejects a non-PDF upload before contacting TMDB', async () => {
     const form = new FormData()
     form.set('id', '603')
+    form.set('mediaType', 'movie')
     form.set('pdf', new File(['x'], 'notes.txt', { type: 'text/plain' }))
     const res = await POST(postRequest(form))
     expect(res.status).toBe(400)
@@ -91,16 +96,34 @@ describe('POST /api/screenplays', () => {
     expect(mockGetScreenplay).not.toHaveBeenCalled()
   })
 
+  it('rejects a request with no mediaType', async () => {
+    const form = new FormData()
+    form.set('id', '603')
+    const res = await POST(postRequest(form))
+    expect(res.status).toBe(400)
+    expect(mockGetScreenplay).not.toHaveBeenCalled()
+  })
+
+  it('rejects an unrecognized mediaType', async () => {
+    const form = new FormData()
+    form.set('id', '603')
+    form.set('mediaType', 'book')
+    const res = await POST(postRequest(form))
+    expect(res.status).toBe(400)
+    expect(mockGetScreenplay).not.toHaveBeenCalled()
+  })
+
   it('adds a screenplay without a PDF', async () => {
     mockGetScreenplay.mockResolvedValue({ ...sampleScreenplay })
     mockAddScreenplay.mockResolvedValue([sampleScreenplay])
     const form = new FormData()
     form.set('id', '603')
+    form.set('mediaType', 'movie')
 
     const res = await POST(postRequest(form))
 
     expect(res.status).toBe(200)
-    expect(mockGetScreenplay).toHaveBeenCalledWith(603)
+    expect(mockGetScreenplay).toHaveBeenCalledWith('movie', 603)
     expect(mockSavePdf).not.toHaveBeenCalled()
     expect(mockAddScreenplay).toHaveBeenCalledWith(
       expect.objectContaining({ id: 603, pdfName: null })
@@ -115,14 +138,15 @@ describe('POST /api/screenplays', () => {
     ])
     const form = new FormData()
     form.set('id', '603')
+    form.set('mediaType', 'movie')
     form.set('pdf', new File(['%PDF'], 'script.pdf', { type: 'application/pdf' }))
 
     const res = await POST(postRequest(form))
 
     expect(res.status).toBe(200)
-    expect(mockSavePdf).toHaveBeenCalledWith(603, expect.any(File))
+    expect(mockSavePdf).toHaveBeenCalledWith('the-matrix-1999.pdf', expect.any(File))
     expect(mockAddScreenplay).toHaveBeenCalledWith(
-      expect.objectContaining({ pdfName: 'script.pdf' })
+      expect.objectContaining({ pdfName: 'the-matrix-1999.pdf' })
     )
   })
 
@@ -130,6 +154,7 @@ describe('POST /api/screenplays', () => {
     mockGetScreenplay.mockRejectedValue(new TmdbError('No film found.', 404))
     const form = new FormData()
     form.set('id', '999')
+    form.set('mediaType', 'movie')
 
     const res = await POST(postRequest(form))
 
@@ -141,6 +166,7 @@ describe('POST /api/screenplays', () => {
     mockGetScreenplay.mockRejectedValue(new Error('disk on fire'))
     const form = new FormData()
     form.set('id', '603')
+    form.set('mediaType', 'movie')
     await expect(POST(postRequest(form))).rejects.toThrow('disk on fire')
   })
 })

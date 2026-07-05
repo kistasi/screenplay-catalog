@@ -1,15 +1,22 @@
 import { NextResponse } from 'next/server'
+import type { MediaType } from './types'
 
 /**
- * Parse a route `[id]` param into a positive-or-any integer. Returns the number,
- * or a ready-to-send 400 response when the param isn't a valid integer.
+ * Parse a route `[id]` param of the form `movie-603` or `tv-1399` into its
+ * media type and numeric TMDB id. Returns a ready-to-send 400 response when
+ * the param doesn't match that shape.
  */
-export function parseRouteId(raw: string): number | NextResponse {
-  const id = Number(raw)
-  if (!Number.isInteger(id)) {
-    return NextResponse.json({ error: 'Invalid id.' }, { status: 400 })
+export function parseScreenplayKey(
+  raw: string
+): { mediaType: MediaType; id: number } | NextResponse {
+  const separatorIndex = raw.indexOf('-')
+  const mediaType = separatorIndex === -1 ? raw : raw.slice(0, separatorIndex)
+  const id = Number(separatorIndex === -1 ? '' : raw.slice(separatorIndex + 1))
+
+  if ((mediaType !== 'movie' && mediaType !== 'tv') || !Number.isInteger(id)) {
+    return NextResponse.json({ error: 'Invalid screenplay id.' }, { status: 400 })
   }
-  return id
+  return { mediaType, id }
 }
 
 /**

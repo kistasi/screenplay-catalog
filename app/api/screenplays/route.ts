@@ -15,11 +15,16 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const form = await request.formData().catch(() => null)
   const rawId = form?.get('id')
+  const rawMediaType = form?.get('mediaType')
   const id = Number(rawId)
+  const mediaType = rawMediaType === 'movie' || rawMediaType === 'tv' ? rawMediaType : null
 
-  if (!form || typeof rawId !== 'string' || !Number.isInteger(id) || id <= 0) {
+  if (!form || typeof rawId !== 'string' || !Number.isInteger(id) || id <= 0 || !mediaType) {
     return NextResponse.json(
-      { error: 'Request must include a positive numeric TMDB `id`.' },
+      {
+        error:
+          'Request must include a positive numeric TMDB `id` and a `mediaType` of "movie" or "tv".',
+      },
       { status: 400 }
     )
   }
@@ -34,9 +39,11 @@ export async function POST(request: NextRequest) {
 
   try {
     // Resolve full details (incl. director/writer credits) from TMDB.
-    const screenplay = await getScreenplay(id)
+    const screenplay = await getScreenplay(mediaType, id)
 
-    if (pdf) {
+    // TV shows don't have a single PDF slot; episode PDFs are attached
+    // afterward via /episodes.
+    if (pdf && screenplay.mediaType === 'movie') {
       const filename = `${slugify(screenplay.title, screenplay.year)}.pdf`
       await savePdf(filename, pdf)
       screenplay.pdfName = filename

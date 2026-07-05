@@ -1,6 +1,6 @@
 'use client'
 
-import type { Screenplay } from '@/lib/types'
+import type { MovieScreenplay } from '@/lib/types'
 import { ModalShell } from './modal'
 import { PdfUploadForm } from './pdf-upload-form'
 
@@ -9,7 +9,7 @@ export default function EditScreenplayModal({
   onClose,
   onSave,
 }: {
-  screenplay: Screenplay
+  screenplay: MovieScreenplay
   onClose: () => void
   // Uploads/replaces the PDF; resolves on success, rejects on failure.
   onSave: (pdf: File) => Promise<void>
