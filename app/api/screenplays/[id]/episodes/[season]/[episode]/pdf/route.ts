@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { findScreenplay } from '@/lib/screenplays-db'
 import { pdfResponse, readPdf } from '@/lib/uploads'
-import { parseScreenplayKey } from '@/lib/validation'
+import { parseRouteNumber, parseScreenplayKey } from '@/lib/validation'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,14 +13,10 @@ export async function GET(
   const key = parseScreenplayKey(id)
   if (key instanceof NextResponse) return key
 
-  const seasonNumber = Number(season)
-  const episodeNumber = Number(episode)
-  if (!Number.isInteger(seasonNumber) || !Number.isInteger(episodeNumber)) {
-    return NextResponse.json(
-      { error: 'Invalid season or episode number.' },
-      { status: 400 }
-    )
-  }
+  const seasonNumber = parseRouteNumber(season, 'season number')
+  if (seasonNumber instanceof NextResponse) return seasonNumber
+  const episodeNumber = parseRouteNumber(episode, 'episode number')
+  if (episodeNumber instanceof NextResponse) return episodeNumber
 
   const show = await findScreenplay(key.mediaType, key.id)
   const episodeRecord =

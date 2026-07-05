@@ -3,14 +3,14 @@ import { DELETE, PATCH } from './route'
 import {
   findScreenplay,
   removeScreenplay,
-  updateScreenplay,
+  updateMoviePdf,
 } from '@/lib/screenplays-db'
 import { deletePdf, savePdf } from '@/lib/uploads'
 
 vi.mock('@/lib/screenplays-db', () => ({
   findScreenplay: vi.fn(),
   removeScreenplay: vi.fn(),
-  updateScreenplay: vi.fn(),
+  updateMoviePdf: vi.fn(),
 }))
 vi.mock('@/lib/uploads', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/uploads')>()
@@ -19,7 +19,7 @@ vi.mock('@/lib/uploads', async (importOriginal) => {
 
 const mockFind = vi.mocked(findScreenplay)
 const mockRemove = vi.mocked(removeScreenplay)
-const mockUpdate = vi.mocked(updateScreenplay)
+const mockUpdate = vi.mocked(updateMoviePdf)
 const mockSavePdf = vi.mocked(savePdf)
 const mockDeletePdf = vi.mocked(deletePdf)
 
@@ -115,7 +115,7 @@ describe('PATCH /api/screenplays/[id]', () => {
 
     expect(res.status).toBe(200)
     expect(mockSavePdf).toHaveBeenCalledWith('the-matrix-1999.pdf', expect.any(File))
-    expect(mockUpdate).toHaveBeenCalledWith('movie', 1, { pdfName: 'the-matrix-1999.pdf' })
+    expect(mockUpdate).toHaveBeenCalledWith(1, 'the-matrix-1999.pdf')
     await expect(res.json()).resolves.toEqual({
       screenplays: [{ ...sample, pdfName: 'script.pdf' }],
     })

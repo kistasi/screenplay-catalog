@@ -45,18 +45,21 @@ type ScreenplayBase = {
   id: number // TMDB id, namespaced by mediaType (movie/tv ids can collide)
   title: string
   year: string | null
-  directors: string[]
-  writers: string[]
   posterUrl: string | null
 }
 
-/** A movie has a single attached screenplay PDF. */
+/** A movie has a single attached screenplay PDF, and its own director/writer credits. */
 export type MovieScreenplay = ScreenplayBase & {
   mediaType: 'movie'
+  directors: string[]
+  writers: string[]
   pdfName: string | null
 }
 
-/** A TV show has one screenplay PDF per episode a script was attached to. */
+/**
+ * A TV show has one screenplay PDF per episode a script was attached to.
+ * Director/writer credits live on each episode, not the show as a whole.
+ */
 export type TvScreenplay = ScreenplayBase & {
   mediaType: 'tv'
   episodes: Episode[]

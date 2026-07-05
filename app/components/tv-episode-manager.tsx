@@ -197,6 +197,33 @@ export function TvEpisodeManager({
   )
 }
 
+// Fetch a JSON list from `url`, unwrapping either `{ [key]: T[] }` or
+// `{ error: string }`. Shared by SeasonPicker and EpisodePicker below.
+function useFetchList<T>(url: string, key: string, errorMessage: string) {
+  const [items, setItems] = useState<T[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+    fetch(url)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!active) return
+        if (data.error) setError(data.error)
+        else setItems(data[key] ?? [])
+      })
+      .catch(() => {
+        if (active) setError(errorMessage)
+      })
+    return () => {
+      active = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url])
+
+  return { items, error }
+}
+
 function SeasonPicker({
   showId,
   onBack,
@@ -206,25 +233,11 @@ function SeasonPicker({
   onBack: () => void
   onSelect: (season: TvSeason) => void
 }) {
-  const [seasons, setSeasons] = useState<TvSeason[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    let active = true
-    fetch(`/api/tmdb/tv/${showId}/seasons`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (!active) return
-        if (data.error) setError(data.error)
-        else setSeasons(data.seasons ?? [])
-      })
-      .catch(() => {
-        if (active) setError('Failed to load seasons.')
-      })
-    return () => {
-      active = false
-    }
-  }, [showId])
+  const { items: seasons, error } = useFetchList<TvSeason>(
+    `/api/tmdb/tv/${showId}/seasons`,
+    'seasons',
+    'Failed to load seasons.'
+  )
 
   return (
     <div className="mt-3">
@@ -270,25 +283,11 @@ function EpisodePicker({
   onBack: () => void
   onSelect: (episode: TvEpisodeInfo) => void
 }) {
-  const [episodes, setEpisodes] = useState<TvEpisodeInfo[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    let active = true
-    fetch(`/api/tmdb/tv/${showId}/season/${season.seasonNumber}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (!active) return
-        if (data.error) setError(data.error)
-        else setEpisodes(data.episodes ?? [])
-      })
-      .catch(() => {
-        if (active) setError('Failed to load episodes.')
-      })
-    return () => {
-      active = false
-    }
-  }, [showId, season.seasonNumber])
+  const { items: episodes, error } = useFetchList<TvEpisodeInfo>(
+    `/api/tmdb/tv/${showId}/season/${season.seasonNumber}`,
+    'episodes',
+    'Failed to load episodes.'
+  )
 
   return (
     <div className="mt-3">

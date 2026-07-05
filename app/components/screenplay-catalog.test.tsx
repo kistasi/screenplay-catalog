@@ -29,11 +29,16 @@ const thrones: Screenplay = {
   mediaType: 'tv',
   title: 'Game of Thrones',
   year: '2011',
-  directors: ['David Nutter'],
-  writers: ['David Benioff'],
   posterUrl: null,
   episodes: [
-    { seasonNumber: 1, episodeNumber: 1, name: 'Winter Is Coming', pdfName: 'got-s01e01.pdf' },
+    {
+      seasonNumber: 1,
+      episodeNumber: 1,
+      name: 'Winter Is Coming',
+      directors: ['Tim Van Patten'],
+      writers: ['David Benioff', 'D. B. Weiss'],
+      pdfName: 'got-s01e01.pdf',
+    },
   ],
 }
 

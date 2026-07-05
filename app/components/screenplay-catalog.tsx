@@ -152,22 +152,20 @@ export default function ScreenplayCatalog() {
   const years = useMemo(() => uniqueYears(active), [active])
 
   const titleNeedle = titleQuery.trim().toLowerCase()
-  const filtered =
-    tab === 'movie'
-      ? movies.filter(
-          (s) =>
-            (!titleNeedle || s.title.toLowerCase().includes(titleNeedle)) &&
-            (!directorFilter || s.directors.includes(directorFilter)) &&
-            (!writerFilter || s.writers.includes(writerFilter)) &&
-            (!yearFilter || s.year === yearFilter)
-        )
-      : shows.filter(
-          (s) =>
-            (!titleNeedle || s.title.toLowerCase().includes(titleNeedle)) &&
-            (!directorFilter || s.episodes.some((e) => e.directors.includes(directorFilter))) &&
-            (!writerFilter || s.episodes.some((e) => e.writers.includes(writerFilter))) &&
-            (!yearFilter || s.year === yearFilter)
-        )
+  const filteredMovies = movies.filter(
+    (s) =>
+      (!titleNeedle || s.title.toLowerCase().includes(titleNeedle)) &&
+      (!directorFilter || s.directors.includes(directorFilter)) &&
+      (!writerFilter || s.writers.includes(writerFilter)) &&
+      (!yearFilter || s.year === yearFilter)
+  )
+  const filteredShows = shows.filter(
+    (s) =>
+      (!titleNeedle || s.title.toLowerCase().includes(titleNeedle)) &&
+      (!directorFilter || s.episodes.some((e) => e.directors.includes(directorFilter))) &&
+      (!writerFilter || s.episodes.some((e) => e.writers.includes(writerFilter))) &&
+      (!yearFilter || s.year === yearFilter)
+  )
 
   // Filters don't carry meaning across tabs, so reset them when switching.
   const switchTab = (next: Tab) => {
@@ -248,7 +246,7 @@ export default function ScreenplayCatalog() {
         </p>
       ) : tab === 'movie' ? (
         <MoviesTable
-          movies={filtered as MovieScreenplay[]}
+          movies={filteredMovies}
           deletingKey={deletingKey}
           onView={setPosterView}
           onEdit={(s) => setEditingKey(screenplayKey(s))}
@@ -259,7 +257,7 @@ export default function ScreenplayCatalog() {
         />
       ) : (
         <ShowsList
-          shows={filtered as TvScreenplay[]}
+          shows={filteredShows}
           deletingKey={deletingKey}
           onView={setPosterView}
           onDelete={deleteScreenplay}
@@ -360,23 +358,12 @@ function MoviesTable({
           {movies.map((s) => (
             <tr key={screenplayKey(s)} className="hover:bg-foreground/[0.04]">
               <Td>
-                {s.posterUrl ? (
-                  <button
-                    type="button"
-                    onClick={() => onView(s)}
-                    className="cursor-pointer rounded ring-offset-2 ring-offset-background transition-opacity hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground/40"
-                    aria-label={`View poster for ${s.title}`}
-                  >
-                    <Poster src={s.posterUrl} alt="" className="h-12 w-8" />
-                  </button>
-                ) : (
-                  <Poster
-                    src={null}
-                    alt=""
-                    className="h-12 w-8"
-                    placeholderText="text-[10px]"
-                  />
-                )}
+                <PosterButton
+                  screenplay={s}
+                  className="h-12 w-8"
+                  placeholderText="text-[10px]"
+                  onView={() => onView(s)}
+                />
               </Td>
               <Td>
                 <span className="font-medium">{s.title}</span>
@@ -493,18 +480,11 @@ function ShowsList({
         <div key={screenplayKey(s)} className="rounded-lg border border-foreground/20 p-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3">
-              {s.posterUrl ? (
-                <button
-                  type="button"
-                  onClick={() => onView(s)}
-                  className="cursor-pointer rounded ring-offset-2 ring-offset-background transition-opacity hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground/40"
-                  aria-label={`View poster for ${s.title}`}
-                >
-                  <Poster src={s.posterUrl} alt="" className="h-[72px] w-12 shrink-0" />
-                </button>
-              ) : (
-                <Poster src={null} alt="" className="h-[72px] w-12 shrink-0" />
-              )}
+              <PosterButton
+                screenplay={s}
+                className="h-[72px] w-12 shrink-0"
+                onView={() => onView(s)}
+              />
               <div className="min-w-0">
                 <p className="font-medium">
                   {s.title}
@@ -548,6 +528,36 @@ function ShowsList({
   )
 }
 
+// A poster thumbnail that opens the full-size poster modal when clicked, or
+// a plain placeholder when there's no poster to view.
+function PosterButton({
+  screenplay,
+  className,
+  placeholderText,
+  onView,
+}: {
+  screenplay: { posterUrl: string | null; title: string }
+  className: string
+  placeholderText?: string
+  onView: () => void
+}) {
+  if (!screenplay.posterUrl) {
+    return (
+      <Poster src={null} alt="" className={className} placeholderText={placeholderText} />
+    )
+  }
+  return (
+    <button
+      type="button"
+      onClick={onView}
+      className="cursor-pointer rounded ring-offset-2 ring-offset-background transition-opacity hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground/40"
+      aria-label={`View poster for ${screenplay.title}`}
+    >
+      <Poster src={screenplay.posterUrl} alt="" className={className} />
+    </button>
+  )
+}
+
 function PosterModal({
   screenplay,
   onClose,
@@ -581,27 +591,25 @@ function PosterModal({
 }
 
 // Collect the distinct, alphabetically sorted names across a credit field.
+// Works for anything with directors/writers arrays: movies or episodes.
 function uniqueNames(
-  screenplays: Screenplay[],
+  items: Array<{ directors: string[]; writers: string[] }>,
   field: 'directors' | 'writers'
 ): string[] {
   const names = new Set<string>()
-  for (const s of screenplays) {
-    for (const name of s[field]) names.add(name)
+  for (const item of items) {
+    for (const name of item[field]) names.add(name)
   }
   return [...names].sort((a, b) => a.localeCompare(b))
 }
 
-// Collect the distinct, alphabetically sorted names across all episodes'
-// credits (rather than the show's own aggregate directors/writers).
+// Shows carry no credits of their own — flatten to each show's episodes,
+// since that's where directors/writers actually live.
 function uniqueEpisodeNames(shows: TvScreenplay[], field: 'directors' | 'writers'): string[] {
-  const names = new Set<string>()
-  for (const s of shows) {
-    for (const e of s.episodes) {
-      for (const name of e[field]) names.add(name)
-    }
-  }
-  return [...names].sort((a, b) => a.localeCompare(b))
+  return uniqueNames(
+    shows.flatMap((s) => s.episodes),
+    field
+  )
 }
 
 // Collect the distinct years present, most recent first.

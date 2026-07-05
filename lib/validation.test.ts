@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { NextResponse } from 'next/server'
-import { parseScreenplayKey, pdfFromForm } from './validation'
+import { parseRouteNumber, parseScreenplayKey, pdfFromForm } from './validation'
 
 function pdfFile(name = 'script.pdf', type = 'application/pdf', body = '%PDF') {
   return new File([body], name, { type })
@@ -37,6 +37,28 @@ describe('parseScreenplayKey', () => {
 
   it('rejects a key with no separator', () => {
     expect(parseScreenplayKey('42')).toBeInstanceOf(NextResponse)
+  })
+})
+
+describe('parseRouteNumber', () => {
+  it('parses an integer string', () => {
+    expect(parseRouteNumber('3', 'season number')).toBe(3)
+  })
+
+  it('parses zero', () => {
+    expect(parseRouteNumber('0', 'season number')).toBe(0)
+  })
+
+  it('returns a 400 response worded with the given label for a non-integer', async () => {
+    const res = parseRouteNumber('abc', 'episode number')
+    expect(res).toBeInstanceOf(NextResponse)
+    const body = res as NextResponse
+    expect(body.status).toBe(400)
+    await expect(body.json()).resolves.toEqual({ error: 'Invalid episode number.' })
+  })
+
+  it('rejects fractional values', () => {
+    expect(parseRouteNumber('1.5', 'season number')).toBeInstanceOf(NextResponse)
   })
 })
 

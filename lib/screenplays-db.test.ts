@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { MovieScreenplay, Screenplay, TvScreenplay } from './types'
+import type { Episode, MovieScreenplay, Screenplay, TvScreenplay } from './types'
 
 // screenplays-db computes its DB path from process.cwd() at import time, so we
 // point cwd at a throwaway temp dir and import the module fresh for each test.
@@ -29,10 +29,20 @@ function makeTvScreenplay(over: Partial<TvScreenplay> = {}): TvScreenplay {
     mediaType: 'tv',
     title: 'Game of Thrones',
     year: '2011',
-    directors: ['David Nutter'],
-    writers: ['David Benioff'],
     posterUrl: null,
     episodes: [],
+    ...over,
+  }
+}
+
+function makeEpisode(over: Partial<Episode> = {}): Episode {
+  return {
+    seasonNumber: 1,
+    episodeNumber: 1,
+    name: 'Winter Is Coming',
+    directors: ['Tim Van Patten'],
+    writers: ['David Benioff', 'D. B. Weiss'],
+    pdfName: 'got-2011-s01e01.pdf',
     ...over,
   }
 }
@@ -93,6 +103,23 @@ describe('getScreenplays', () => {
 
     const all = await db.getScreenplays()
     expect(all[0]).toMatchObject({ mediaType: 'tv', episodes: [] })
+  })
+
+  it('defaults an episode directors/writers to empty arrays for episodes saved before per-episode credits', async () => {
+    await fs.mkdir(path.join(tmpDir, 'data'), { recursive: true })
+    const legacyEpisode = { ...makeEpisode() } as Partial<Episode>
+    delete legacyEpisode.directors
+    delete legacyEpisode.writers
+    const legacyRecord = makeTvScreenplay({ episodes: [legacyEpisode as Episode] })
+    await fs.writeFile(
+      path.join(tmpDir, 'data', 'screenplays.json'),
+      JSON.stringify([legacyRecord])
+    )
+
+    const all = await db.getScreenplays()
+    const show = all[0] as TvScreenplay
+    expect(show.episodes[0].directors).toEqual([])
+    expect(show.episodes[0].writers).toEqual([])
   })
 
   it('propagates non-ENOENT read errors', async () => {
@@ -161,10 +188,10 @@ describe('findScreenplay', () => {
   })
 })
 
-describe('updateScreenplay', () => {
-  it('applies partial changes and returns the full list', async () => {
+describe('updateMoviePdf', () => {
+  it('replaces the pdfName and returns the full list', async () => {
     await db.addScreenplay(makeScreenplay({ id: 1, pdfName: null }))
-    const list = await db.updateScreenplay('movie', 1, { pdfName: 'script.pdf' })
+    const list = await db.updateMoviePdf(1, 'script.pdf')
     expect(list).not.toBeNull()
     expect((list![0] as MovieScreenplay).pdfName).toBe('script.pdf')
     expect(await readRawDb()).toEqual([
@@ -172,26 +199,21 @@ describe('updateScreenplay', () => {
     ])
   })
 
-  it('never lets changes overwrite the id or media type', async () => {
+  it('leaves the id and media type unchanged', async () => {
     await db.addScreenplay(makeScreenplay({ id: 1 }))
-    const list = await db.updateScreenplay('movie', 1, {
-      id: 999,
-      mediaType: 'tv',
-      title: 'Renamed',
-    } as Partial<Screenplay>)
+    const list = await db.updateMoviePdf(1, 'script.pdf')
     expect(list![0].id).toBe(1)
     expect(list![0].mediaType).toBe('movie')
-    expect(list![0].title).toBe('Renamed')
   })
 
   it('returns null when the id is unknown', async () => {
     await db.addScreenplay(makeScreenplay({ id: 1 }))
-    await expect(db.updateScreenplay('movie', 2, { title: 'x' })).resolves.toBeNull()
+    await expect(db.updateMoviePdf(2, 'script.pdf')).resolves.toBeNull()
   })
 
-  it('returns null when the media type does not match', async () => {
-    await db.addScreenplay(makeScreenplay({ id: 1 }))
-    await expect(db.updateScreenplay('tv', 1, { title: 'x' })).resolves.toBeNull()
+  it('returns null when a tv show shares the id but no movie does', async () => {
+    await db.addScreenplay(makeTvScreenplay({ id: 1 }))
+    await expect(db.updateMoviePdf(1, 'script.pdf')).resolves.toBeNull()
   })
 })
 
@@ -221,56 +243,43 @@ describe('removeScreenplay', () => {
 describe('upsertEpisode', () => {
   it('adds a new episode to a tv show', async () => {
     await db.addScreenplay(makeTvScreenplay({ id: 1399 }))
-    const list = await db.upsertEpisode(1399, {
-      seasonNumber: 1,
-      episodeNumber: 1,
-      name: 'Winter Is Coming',
-      pdfName: 'got-2011-s01e01.pdf',
-    })
+    const list = await db.upsertEpisode(1399, makeEpisode())
     const show = list!.find((s) => s.id === 1399) as TvScreenplay
-    expect(show.episodes).toEqual([
-      {
-        seasonNumber: 1,
-        episodeNumber: 1,
-        name: 'Winter Is Coming',
-        pdfName: 'got-2011-s01e01.pdf',
-      },
-    ])
+    expect(show.episodes).toEqual([makeEpisode()])
   })
 
   it('replaces an existing episode matched by season + episode number', async () => {
     await db.addScreenplay(
       makeTvScreenplay({
         episodes: [
-          { seasonNumber: 1, episodeNumber: 1, name: 'Old Name', pdfName: 'old.pdf' },
+          makeEpisode({ name: 'Old Name', directors: [], writers: [], pdfName: 'old.pdf' }),
         ],
       })
     )
-    const list = await db.upsertEpisode(1399, {
-      seasonNumber: 1,
-      episodeNumber: 1,
-      name: 'Winter Is Coming',
-      pdfName: 'new.pdf',
-    })
+    const list = await db.upsertEpisode(1399, makeEpisode({ pdfName: 'new.pdf' }))
     const show = list!.find((s) => s.id === 1399) as TvScreenplay
     expect(show.episodes).toHaveLength(1)
     expect(show.episodes[0].pdfName).toBe('new.pdf')
   })
 
+  it('carries over the directors/writers passed for the episode', async () => {
+    await db.addScreenplay(makeTvScreenplay())
+    const list = await db.upsertEpisode(
+      1399,
+      makeEpisode({ directors: ['Alan Taylor'], writers: ['Bryan Cogman'] })
+    )
+    const show = list!.find((s) => s.id === 1399) as TvScreenplay
+    expect(show.episodes[0].directors).toEqual(['Alan Taylor'])
+    expect(show.episodes[0].writers).toEqual(['Bryan Cogman'])
+  })
+
   it('keeps episodes sorted by season then episode number', async () => {
     await db.addScreenplay(makeTvScreenplay())
-    await db.upsertEpisode(1399, {
-      seasonNumber: 2,
-      episodeNumber: 1,
-      name: 'S2E1',
-      pdfName: 's2e1.pdf',
-    })
-    const list = await db.upsertEpisode(1399, {
-      seasonNumber: 1,
-      episodeNumber: 5,
-      name: 'S1E5',
-      pdfName: 's1e5.pdf',
-    })
+    await db.upsertEpisode(1399, makeEpisode({ seasonNumber: 2, episodeNumber: 1, name: 'S2E1', pdfName: 's2e1.pdf' }))
+    const list = await db.upsertEpisode(
+      1399,
+      makeEpisode({ seasonNumber: 1, episodeNumber: 5, name: 'S1E5', pdfName: 's1e5.pdf' })
+    )
     const show = list!.find((s) => s.id === 1399) as TvScreenplay
     expect(show.episodes.map((e) => `${e.seasonNumber}-${e.episodeNumber}`)).toEqual([
       '1-5',
@@ -279,33 +288,15 @@ describe('upsertEpisode', () => {
   })
 
   it('returns null when no tv show matches the id', async () => {
-    await expect(
-      db.upsertEpisode(999, {
-        seasonNumber: 1,
-        episodeNumber: 1,
-        name: 'x',
-        pdfName: 'x.pdf',
-      })
-    ).resolves.toBeNull()
+    await expect(db.upsertEpisode(999, makeEpisode())).resolves.toBeNull()
   })
 })
 
 describe('removeEpisode', () => {
   it('removes the matching episode and returns it', async () => {
-    await db.addScreenplay(
-      makeTvScreenplay({
-        episodes: [
-          { seasonNumber: 1, episodeNumber: 1, name: 'Winter Is Coming', pdfName: 'a.pdf' },
-        ],
-      })
-    )
+    await db.addScreenplay(makeTvScreenplay({ episodes: [makeEpisode({ pdfName: 'a.pdf' })] }))
     const { screenplays, removed } = await db.removeEpisode(1399, 1, 1)
-    expect(removed).toEqual({
-      seasonNumber: 1,
-      episodeNumber: 1,
-      name: 'Winter Is Coming',
-      pdfName: 'a.pdf',
-    })
+    expect(removed).toEqual(makeEpisode({ pdfName: 'a.pdf' }))
     const show = screenplays.find((s) => s.id === 1399) as TvScreenplay
     expect(show.episodes).toEqual([])
   })

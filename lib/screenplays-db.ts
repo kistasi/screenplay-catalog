@@ -74,20 +74,19 @@ export async function addScreenplay(screenplay: Screenplay): Promise<Screenplay[
 }
 
 /**
- * Apply partial changes to a screenplay by media type and id. Returns the
- * full, updated list, or null if no matching screenplay exists.
+ * Replace a movie's attached PDF filename. Returns the full, updated list,
+ * or null if no matching movie exists.
  */
-export async function updateScreenplay(
-  mediaType: MediaType,
+export async function updateMoviePdf(
   id: number,
-  changes: Partial<Screenplay>
+  pdfName: string
 ): Promise<Screenplay[] | null> {
   const existing = await readAll()
-  const index = existing.findIndex((s) => isMatch(s, mediaType, id))
+  const index = existing.findIndex((s) => s.mediaType === 'movie' && s.id === id)
   if (index === -1) return null
 
   const updated = [...existing]
-  updated[index] = { ...updated[index], ...changes, id, mediaType } as Screenplay
+  updated[index] = { ...(updated[index] as MovieScreenplay), pdfName }
   await writeAll(updated)
   return updated
 }

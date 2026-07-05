@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { getScreenplay, searchTitles, TmdbError } from './tmdb'
+import type { MovieScreenplay } from './types'
 
 // A stub Response good enough for the code under test (it only reads .ok,
 // .status and .json()).
@@ -224,14 +225,14 @@ describe('getScreenplay (movie)', () => {
         },
       })
     )
-    const s = await getScreenplay('movie', 1)
+    const s = (await getScreenplay('movie', 1)) as MovieScreenplay
     expect(s.directors).toEqual(['A. Director'])
     expect(s.writers).toEqual(['A. Director'])
   })
 
   it('returns empty credit arrays when crew is absent', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ id: 1, title: 'No Crew' }))
-    const s = await getScreenplay('movie', 1)
+    const s = (await getScreenplay('movie', 1)) as MovieScreenplay
     expect(s.directors).toEqual([])
     expect(s.writers).toEqual([])
   })
@@ -259,34 +260,9 @@ describe('getScreenplay (tv)', () => {
     name: 'Game of Thrones',
     first_air_date: '2011-04-17',
     poster_path: '/got.jpg',
-    created_by: [{ name: 'David Benioff' }, { name: 'D. B. Weiss' }],
-    aggregate_credits: {
-      crew: [
-        {
-          name: 'David Nutter',
-          department: 'Directing',
-          jobs: [{ job: 'Director' }],
-        },
-        {
-          name: 'David Benioff',
-          department: 'Writing',
-          jobs: [{ job: 'Writer' }],
-        },
-        {
-          name: 'D. B. Weiss',
-          department: 'Writing',
-          jobs: [{ job: 'Writer' }],
-        },
-        {
-          name: 'Some Producer',
-          department: 'Production',
-          jobs: [{ job: 'Executive Producer' }],
-        },
-      ],
-    },
   }
 
-  it('shapes details + aggregate credits into a Screenplay', async () => {
+  it('shapes show details into a Screenplay with no episodes yet', async () => {
     fetchMock.mockResolvedValue(jsonResponse(tvBody))
     const screenplay = await getScreenplay('tv', 1399)
     expect(screenplay).toEqual({
@@ -294,39 +270,29 @@ describe('getScreenplay (tv)', () => {
       mediaType: 'tv',
       title: 'Game of Thrones',
       year: '2011',
-      directors: ['David Nutter'],
-      writers: ['David Benioff', 'D. B. Weiss'],
       posterUrl: 'https://image.tmdb.org/t/p/w200/got.jpg',
       episodes: [],
     })
   })
 
-  it('requests aggregate_credits via append_to_response', async () => {
+  it('requests the show details endpoint', async () => {
     fetchMock.mockResolvedValue(jsonResponse(tvBody))
     await getScreenplay('tv', 1399)
     const url = new URL(fetchMock.mock.calls[0][0])
     expect(url.pathname).toBe('/3/tv/1399')
-    expect(url.searchParams.get('append_to_response')).toBe('aggregate_credits')
   })
 
-  it('falls back to created_by when no aggregate director credit exists', async () => {
-    fetchMock.mockResolvedValue(
-      jsonResponse({
-        id: 1,
-        name: 'No Director Data',
-        created_by: [{ name: 'A Creator' }],
-        aggregate_credits: { crew: [] },
-      })
-    )
+  it('handles a missing year and poster gracefully', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ id: 1, name: 'No Air Date Yet' }))
     const s = await getScreenplay('tv', 1)
-    expect(s.directors).toEqual(['A Creator'])
-  })
-
-  it('returns empty credit arrays when crew and created_by are absent', async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ id: 1, name: 'No Crew' }))
-    const s = await getScreenplay('tv', 1)
-    expect(s.directors).toEqual([])
-    expect(s.writers).toEqual([])
+    expect(s).toEqual({
+      id: 1,
+      mediaType: 'tv',
+      title: 'No Air Date Yet',
+      year: null,
+      posterUrl: null,
+      episodes: [],
+    })
   })
 
   it('throws a 404 TmdbError when the show is unknown', async () => {
@@ -334,6 +300,14 @@ describe('getScreenplay (tv)', () => {
     await expect(getScreenplay('tv', 999)).rejects.toMatchObject({
       name: 'TmdbError',
       status: 404,
+    })
+  })
+
+  it('throws a 502 TmdbError for other upstream failures', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({}, { ok: false, status: 503 }))
+    await expect(getScreenplay('tv', 1399)).rejects.toMatchObject({
+      name: 'TmdbError',
+      status: 502,
     })
   })
 })

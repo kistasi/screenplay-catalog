@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import {
   findScreenplay,
   removeScreenplay,
-  updateScreenplay,
+  updateMoviePdf,
 } from '@/lib/screenplays-db'
 import { deletePdf, savePdf, slugify } from '@/lib/uploads'
 import { parseScreenplayKey, pdfFromForm } from '@/lib/validation'
@@ -62,7 +62,7 @@ export async function PATCH(
   await deletePdf(existing.pdfName)
   const filename = `${slugify(existing.title, existing.year)}.pdf`
   await savePdf(filename, pdf)
-  const screenplays = await updateScreenplay(key.mediaType, key.id, { pdfName: filename })
+  const screenplays = await updateMoviePdf(key.id, filename)
 
   return NextResponse.json({ screenplays })
 }

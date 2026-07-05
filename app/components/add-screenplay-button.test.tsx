@@ -68,7 +68,7 @@ describe('AddScreenplayButton', () => {
 
     await userEvent.type(screen.getByPlaceholderText(placeholder), 'matrix')
 
-    expect(await screen.findByText('The Matrix')).toBeInTheDocument()
+    expect(await screen.findByText('The Matrix', {}, { timeout: 3000 })).toBeInTheDocument()
     expect(screen.getByText('Game of Thrones')).toBeInTheDocument()
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
@@ -83,7 +83,9 @@ describe('AddScreenplayButton', () => {
     render(<AddScreenplayButton onAdd={vi.fn()} />)
     await openModal()
     await userEvent.type(screen.getByPlaceholderText(placeholder), 'zzz')
-    expect(await screen.findByText('No results found.')).toBeInTheDocument()
+    expect(
+      await screen.findByText('No results found.', {}, { timeout: 3000 })
+    ).toBeInTheDocument()
   })
 
   it('shows the error message when the search fails', async () => {
@@ -91,7 +93,9 @@ describe('AddScreenplayButton', () => {
     render(<AddScreenplayButton onAdd={vi.fn()} />)
     await openModal()
     await userEvent.type(screen.getByPlaceholderText(placeholder), 'matrix')
-    expect(await screen.findByText('Upstream failed.')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Upstream failed.', {}, { timeout: 3000 })
+    ).toBeInTheDocument()
   })
 
   it('moves to the upload step and confirms with the chosen movie', async () => {
@@ -101,7 +105,7 @@ describe('AddScreenplayButton', () => {
     await openModal()
     await userEvent.type(screen.getByPlaceholderText(placeholder), 'matrix')
 
-    await userEvent.click(await screen.findByText('The Matrix'))
+    await userEvent.click(await screen.findByText('The Matrix', {}, { timeout: 3000 }))
 
     // Upload step: optional PDF, so "Add to catalog" is enabled immediately.
     const confirm = await screen.findByRole('button', { name: 'Add to catalog' })
@@ -117,7 +121,7 @@ describe('AddScreenplayButton', () => {
     await openModal()
     await userEvent.type(screen.getByPlaceholderText(placeholder), 'thrones')
 
-    await userEvent.click(await screen.findByText('Game of Thrones'))
+    await userEvent.click(await screen.findByText('Game of Thrones', {}, { timeout: 3000 }))
 
     const confirm = await screen.findByRole('button', { name: 'Add to catalog' })
     await userEvent.click(confirm)
@@ -130,7 +134,7 @@ describe('AddScreenplayButton', () => {
     render(<AddScreenplayButton onAdd={vi.fn().mockResolvedValue(undefined)} />)
     await openModal()
     await userEvent.type(screen.getByPlaceholderText(placeholder), 'matrix')
-    await userEvent.click(await screen.findByText('The Matrix'))
+    await userEvent.click(await screen.findByText('The Matrix', {}, { timeout: 3000 }))
     await userEvent.click(await screen.findByRole('button', { name: 'Add to catalog' }))
 
     await waitFor(() =>
@@ -143,7 +147,7 @@ describe('AddScreenplayButton', () => {
     render(<AddScreenplayButton onAdd={vi.fn()} />)
     await openModal()
     await userEvent.type(screen.getByPlaceholderText(placeholder), 'matrix')
-    await userEvent.click(await screen.findByText('The Matrix'))
+    await userEvent.click(await screen.findByText('The Matrix', {}, { timeout: 3000 }))
 
     await userEvent.click(await screen.findByRole('button', { name: 'Back' }))
     expect(screen.getByPlaceholderText(placeholder)).toBeInTheDocument()

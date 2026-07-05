@@ -14,14 +14,6 @@ export class TmdbError extends Error {
 
 type TmdbCrewMember = { name: string; job?: string; department?: string }
 
-// A TV show's crew, aggregated across all episodes: each member carries every
-// job they've held on the show rather than a single `job` string.
-type TmdbAggregateCrewMember = {
-  name: string
-  department?: string
-  jobs?: Array<{ job: string }>
-}
-
 // Build and send a TMDB request, attaching credentials. TMDB accepts either a
 // v4 "Read Access Token" (a JWT, sent as a Bearer header) or a classic v3 API
 // key (sent as an `api_key` query param); detect which was provided.
@@ -104,17 +96,6 @@ function uniqueNames(crew: TmdbCrewMember[], match: (c: TmdbCrewMember) => boole
   return [...seen]
 }
 
-function uniqueAggregateNames(
-  crew: TmdbAggregateCrewMember[],
-  match: (c: TmdbAggregateCrewMember) => boolean
-) {
-  const seen = new Set<string>()
-  for (const member of crew) {
-    if (match(member)) seen.add(member.name)
-  }
-  return [...seen]
-}
-
 /**
  * Fetch a movie's details plus credits and shape it into a Screenplay,
  * extracting director(s) and writer(s) from the crew.
@@ -155,15 +136,12 @@ async function getMovie(id: number): Promise<Screenplay> {
 }
 
 /**
- * Fetch a TV show's details plus credits aggregated across every episode,
- * and shape it into a Screenplay. Directors/writers come from the aggregate
- * crew; if no episodes carry a "Director" credit (common for shows TMDB
- * hasn't fully indexed), fall back to the show's credited creators.
+ * Fetch a TV show's details and shape it into a Screenplay. Unlike movies, a
+ * show has no single director/writer credit — those live on each episode
+ * (see getSeasonEpisodes), so the show starts with an empty episode list.
  */
 async function getTvShow(id: number): Promise<Screenplay> {
-  const res = await tmdbRequest(`/tv/${id}`, {
-    append_to_response: 'aggregate_credits',
-  })
+  const res = await tmdbRequest(`/tv/${id}`, {})
 
   if (res.status === 404) {
     throw new TmdbError(`No TV show found with id ${id}.`, 404)
@@ -177,24 +155,13 @@ async function getTvShow(id: number): Promise<Screenplay> {
     name: string
     first_air_date?: string
     poster_path?: string | null
-    created_by?: Array<{ name: string }>
-    aggregate_credits?: { crew?: TmdbAggregateCrewMember[] }
   }
-
-  const crew = data.aggregate_credits?.crew ?? []
-  const directors = uniqueAggregateNames(
-    crew,
-    (c) => c.department === 'Directing' && (c.jobs ?? []).some((j) => j.job === 'Director')
-  )
-  const writers = uniqueAggregateNames(crew, (c) => c.department === 'Writing')
 
   return {
     id: data.id,
     mediaType: 'tv',
     title: data.name,
     year: yearFromDate(data.first_air_date),
-    directors: directors.length > 0 ? directors : (data.created_by ?? []).map((c) => c.name),
-    writers,
     posterUrl: posterUrl(data.poster_path),
     episodes: [],
   }

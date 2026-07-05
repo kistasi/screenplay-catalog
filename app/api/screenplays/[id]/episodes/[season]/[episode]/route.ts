@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { removeEpisode } from '@/lib/screenplays-db'
 import { deletePdf } from '@/lib/uploads'
-import { parseScreenplayKey } from '@/lib/validation'
+import { parseRouteNumber, parseScreenplayKey } from '@/lib/validation'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,14 +19,10 @@ export async function DELETE(
     )
   }
 
-  const seasonNumber = Number(season)
-  const episodeNumber = Number(episode)
-  if (!Number.isInteger(seasonNumber) || !Number.isInteger(episodeNumber)) {
-    return NextResponse.json(
-      { error: 'Invalid season or episode number.' },
-      { status: 400 }
-    )
-  }
+  const seasonNumber = parseRouteNumber(season, 'season number')
+  if (seasonNumber instanceof NextResponse) return seasonNumber
+  const episodeNumber = parseRouteNumber(episode, 'episode number')
+  if (episodeNumber instanceof NextResponse) return episodeNumber
 
   const { screenplays, removed } = await removeEpisode(key.id, seasonNumber, episodeNumber)
   if (removed) {
