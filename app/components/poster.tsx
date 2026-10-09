@@ -26,6 +26,7 @@ export function Poster({
         sx={{
           width,
           height,
+          flexShrink: 0,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -45,6 +46,9 @@ export function Poster({
         position: 'relative',
         width,
         height,
+        // Thumbnails sit in flex rows beside long text; without this a long
+        // overview squeezes the poster narrower than its fixed width.
+        flexShrink: 0,
         overflow: 'hidden',
         borderRadius: 1,
         bgcolor: 'action.hover',
